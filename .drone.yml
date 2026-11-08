@@ -53,28 +53,28 @@ steps:
       - |
         set -eu
 
-        test -n "${REGISTRY_HOST:-}" || {
+        test -n "$${REGISTRY_HOST:-}" || {
           echo 'REGISTRY_HOST is empty; verify the registry_host Drone secret is available' >&2
           exit 1
         }
-        test -n "${BOT_IMAGE:-}" || {
+        test -n "$${BOT_IMAGE:-}" || {
           echo 'BOT_IMAGE is empty; verify the registry_bot_image Drone secret is available' >&2
           exit 1
         }
-        test -n "${GATEWAY_IMAGE:-}" || {
+        test -n "$${GATEWAY_IMAGE:-}" || {
           echo 'GATEWAY_IMAGE is empty; verify the registry_gateway_image Drone secret is available' >&2
           exit 1
         }
 
-        registry="${REGISTRY_HOST%/}"
-        case "$BOT_IMAGE" in
+        registry="$${REGISTRY_HOST%/}"
+        case "$${BOT_IMAGE}" in
           "$registry"/*) ;;
           *)
             echo 'registry_bot_image must include the full registry host and repository path' >&2
             exit 1
             ;;
         esac
-        case "$GATEWAY_IMAGE" in
+        case "$${GATEWAY_IMAGE}" in
           "$registry"/*) ;;
           *)
             echo 'registry_gateway_image must include the full registry host and repository path' >&2
