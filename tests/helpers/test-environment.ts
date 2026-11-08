@@ -43,6 +43,7 @@ const TEST_ENV_DEFAULTS: Record<string, string> = {
   OPENCODE_MODEL_ID: "test-model",
   LOG_LEVEL: "error",
   LOG_RETENTION: "10",
+  OPENCODE_TELEGRAM_CONTAINER: "0",
   OPENCODE_TELEGRAM_HOME: homes.defaultHome,
 };
 
