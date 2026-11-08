@@ -13,6 +13,9 @@ steps:
   - name: bot-quality
     image: node:22-bookworm-slim
     commands:
+      - apt-get update
+      - apt-get install -y --no-install-recommends python3 make g++
+      - rm -rf /var/lib/apt/lists/*
       - npm ci
       - npm run lint
       - npm run typecheck
