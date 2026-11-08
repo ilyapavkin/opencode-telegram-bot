@@ -18,8 +18,9 @@ function isEnabledFlag(value: string | undefined): boolean {
 
 export function isContainerRuntime(options?: ContainerRuntimeOptions): boolean {
   const env = options?.env ?? process.env;
-  if (isEnabledFlag(env[OPENCODE_TELEGRAM_CONTAINER_ENV])) {
-    return true;
+  const configuredFlag = env[OPENCODE_TELEGRAM_CONTAINER_ENV];
+  if (configuredFlag !== undefined) {
+    return isEnabledFlag(configuredFlag);
   }
 
   const dockerEnvExists = options?.dockerEnvExists ?? (() => existsSync("/.dockerenv"));

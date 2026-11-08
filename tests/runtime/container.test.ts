@@ -39,6 +39,15 @@ describe("runtime/container", () => {
     ).toBe(false);
   });
 
+  it("lets an explicit false value override Docker detection", () => {
+    expect(
+      isContainerRuntime({
+        env: { [OPENCODE_TELEGRAM_CONTAINER_ENV]: "0" },
+        dockerEnvExists: () => true,
+      }),
+    ).toBe(false);
+  });
+
   it("is true when /.dockerenv exists even without the env flag", () => {
     expect(
       isContainerRuntime({
