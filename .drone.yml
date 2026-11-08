@@ -30,11 +30,64 @@ steps:
       - npm run build
       - npm test
 
+  # The Docker plugin uses registry only for authentication. Each repo secret
+  # must therefore contain the complete registry-qualified image reference.
+  - name: validate-registry-images
+    image: alpine:3.22
+    depends_on:
+      - bot-quality
+      - gateway-quality
+    environment:
+      REGISTRY_HOST:
+        from_secret: registry_host
+      BOT_IMAGE:
+        from_secret: registry_bot_image
+      GATEWAY_IMAGE:
+        from_secret: registry_gateway_image
+    when:
+      branch:
+        - main
+      event:
+        - push
+    commands:
+      - |
+        set -eu
+
+        test -n "${REGISTRY_HOST:-}" || {
+          echo 'REGISTRY_HOST is empty; verify the registry_host Drone secret is available' >&2
+          exit 1
+        }
+        test -n "${BOT_IMAGE:-}" || {
+          echo 'BOT_IMAGE is empty; verify the registry_bot_image Drone secret is available' >&2
+          exit 1
+        }
+        test -n "${GATEWAY_IMAGE:-}" || {
+          echo 'GATEWAY_IMAGE is empty; verify the registry_gateway_image Drone secret is available' >&2
+          exit 1
+        }
+
+        registry="${REGISTRY_HOST%/}"
+        case "$BOT_IMAGE" in
+          "$registry"/*) ;;
+          *)
+            echo 'registry_bot_image must include the full registry host and repository path' >&2
+            exit 1
+            ;;
+        esac
+        case "$GATEWAY_IMAGE" in
+          "$registry"/*) ;;
+          *)
+            echo 'registry_gateway_image must include the full registry host and repository path' >&2
+            exit 1
+            ;;
+        esac
+
   - name: publish-bot-image
     image: plugins/docker
     depends_on:
       - bot-quality
       - gateway-quality
+      - validate-registry-images
     when:
       branch:
         - main
@@ -59,6 +112,7 @@ steps:
     depends_on:
       - bot-quality
       - gateway-quality
+      - validate-registry-images
     when:
       branch:
         - main
