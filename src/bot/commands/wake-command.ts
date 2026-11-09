@@ -11,8 +11,12 @@ export async function wakeCommand(
     return;
   }
 
-  await ctx.reply(t("gateway.wake.starting"));
   try {
+    const status = await deps.gatewayClient.getStatus();
+    if (!status.opencode.healthy) {
+      await ctx.reply(t("gateway.wake.unreachable"));
+    }
+
     const result = await deps.gatewayClient.wake();
     if (!result.ready) {
       await ctx.reply(t("gateway.wake.failed", { error: result.error ?? "unknown error" }));

@@ -7,6 +7,7 @@ vi.mock("../../src/config.js", () => ({
     },
     gateway: {
       requestTimeoutMs: 1_000,
+      wakeTimeoutMs: 2_000,
     },
   },
 }));
@@ -66,5 +67,35 @@ describe("GatewayClient", () => {
 
     await expect(client.wake()).rejects.toThrow("Gateway access is not configured");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("uses the longer wake timeout for the readiness wait", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ready: true,
+          woke: true,
+          wakeDurationMs: 1_500,
+          snapshot: {
+            checkedAt: "2026-11-08T00:00:00.000Z",
+            latencyMs: 12,
+            targetReachable: true,
+            openCodeReachable: true,
+            healthy: true,
+            authenticationRequired: false,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    const client = new GatewayClient("http://gateway:8787", "shared-secret", {
+      fetch: fetchMock,
+    });
+
+    await expect(client.wake()).resolves.toMatchObject({ ready: true, woke: true });
+
+    expect(timeoutSpy).toHaveBeenLastCalledWith(2_000);
+    timeoutSpy.mockRestore();
   });
 });

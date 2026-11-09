@@ -67,7 +67,13 @@ export class GatewayClient {
   }
 
   async wake(signal?: AbortSignal): Promise<GatewayWakeResponse> {
-    return this.request("/wake", { method: "POST" }, isGatewayWake, signal);
+    return this.request(
+      "/wake",
+      { method: "POST" },
+      isGatewayWake,
+      signal,
+      config.gateway?.wakeTimeoutMs ?? 150_000,
+    );
   }
 
   private async request<T>(
@@ -75,12 +81,13 @@ export class GatewayClient {
     init: RequestInit,
     validate: (value: unknown) => value is T,
     signal?: AbortSignal,
+    timeoutMs: number = config.gateway?.requestTimeoutMs ?? 10_000,
   ): Promise<T> {
     if (!this.isConfigured()) {
       throw new GatewayClientError("Gateway access is not configured");
     }
 
-    const timeoutSignal = AbortSignal.timeout(config.gateway?.requestTimeoutMs ?? 10_000);
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
     const requestSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
     let response: Response;
     try {

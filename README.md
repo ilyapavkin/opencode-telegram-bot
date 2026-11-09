@@ -259,6 +259,7 @@ Configuration can be provided through process environment variables or an `.env`
 | `OPENCODE_SERVER_USERNAME`                 | Server auth username                                                                                                  |    No    | `opencode`               |
 | `OPENCODE_SERVER_PASSWORD`                 | Server auth password (needed for V2, see [Old and New OpenCode Versions](#old-and-new-opencode-versions)); ignored when `OPENCODE_SERVER_PASSWORD_FILE` is set | No | — |
 | `OPENCODE_SERVER_PASSWORD_FILE`            | File containing the OpenCode server password; takes precedence over `OPENCODE_SERVER_PASSWORD`                       |    No    | —                        |
+| `GATEWAY_WAKE_TIMEOUT_MS`                  | Maximum time the bot waits for the gateway to wake the target and OpenCode to become ready                         |    No    | `150000`                 |
 | `OPENCODE_MODEL_PROVIDER`                  | Default model provider                                                                                                |   Yes    | `opencode`               |
 | `OPENCODE_MODEL_ID`                        | Default model ID                                                                                                      |   Yes    | `big-pickle`             |
 | `BOT_LOCALE`                               | Bot UI language (supported locale code, e.g. `en`, `ar`, `de`, `es`, `fr`, `id`, `it`, `ko`, `pt`, `ru`, `tr`, `zh`)  |    No    | `en`                     |

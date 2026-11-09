@@ -159,6 +159,7 @@ export function buildGatewayConfig(opencodeApiUrl: string): {
   alertCooldownSec: number;
   wakeDurationThresholdMs: number;
   requestTimeoutMs: number;
+  wakeTimeoutMs: number;
 } {
   const sharedSecret = readOptionalSecret(
     "GATEWAY_SHARED_SECRET",
@@ -177,6 +178,7 @@ export function buildGatewayConfig(opencodeApiUrl: string): {
       120_000,
     ),
     requestTimeoutMs: getOptionalPositiveIntEnvVar("GATEWAY_REQUEST_TIMEOUT_MS", 10_000),
+    wakeTimeoutMs: getOptionalPositiveIntEnvVar("GATEWAY_WAKE_TIMEOUT_MS", 150_000),
   };
 }
 

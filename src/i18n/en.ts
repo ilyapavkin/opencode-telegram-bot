@@ -166,6 +166,7 @@ export const en = {
 
   "gateway.error.unavailable": "Gateway access is not configured or unavailable.",
   "gateway.wake.starting": "🔄 Checking OpenCode readiness and waking the target if needed...",
+  "gateway.wake.unreachable": "OpenCode is unreachable. Sending Wake-on-LAN...",
   "gateway.wake.success": "✅ OpenCode is ready. Wake-on-LAN sent: {woke}. Duration: {duration}.",
   "gateway.wake.failed": "🔴 OpenCode did not become ready.\n\nError: {error}",
   "gateway.status.header": "Gateway status",
@@ -844,6 +845,7 @@ export const gatewayFallback = {
   "cmd.description.alerts": en["cmd.description.alerts"],
   "gateway.error.unavailable": en["gateway.error.unavailable"],
   "gateway.wake.starting": en["gateway.wake.starting"],
+  "gateway.wake.unreachable": en["gateway.wake.unreachable"],
   "gateway.wake.success": en["gateway.wake.success"],
   "gateway.wake.failed": en["gateway.wake.failed"],
   "gateway.status.header": en["gateway.status.header"],
