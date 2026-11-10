@@ -26,6 +26,8 @@ export interface DiffResponse {
 export interface LaunchSelection {
   sessionId: string | null;
   filePath: string | null;
+  messageId: string | null;
+  callId: string | null;
 }
 
 export type ApiFailureKind = "unauthorized" | "unavailable" | "oversized";

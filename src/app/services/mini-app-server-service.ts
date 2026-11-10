@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { config } from "../../config.js";
 import { logger } from "../../utils/logger.js";
 import { MiniAppAuthError, validateMiniAppInitData } from "./mini-app-auth-service.js";
-import { MiniAppDiffError, loadMiniAppDiff } from "./mini-app-diff-service.js";
+import { MiniAppDiffError, loadMiniAppChange, loadMiniAppDiff } from "./mini-app-diff-service.js";
 
 const CLOSE_CONNECTIONS_TIMEOUT_MS = 2000;
 const MINI_APP_ROOT = "/mini-app";
@@ -106,7 +106,10 @@ export class MiniAppServer {
       return;
     }
 
-    if (url.pathname === `${MINI_APP_ROOT}/api/diff`) {
+    if (
+      url.pathname === `${MINI_APP_ROOT}/api/diff` ||
+      url.pathname === `${MINI_APP_ROOT}/api/change`
+    ) {
       await this.handleDiffRequest(req, res, url);
       return;
     }
@@ -166,7 +169,26 @@ export class MiniAppServer {
     }
 
     try {
-      const response = await loadMiniAppDiff(sessionId, url.searchParams.get("file"));
+      const messageId = url.searchParams.get("message_id");
+      const callId = url.searchParams.get("call_id");
+      let response;
+      if (url.pathname === `${MINI_APP_ROOT}/api/change`) {
+        if (!messageId || !callId) {
+          throw new MiniAppDiffError(
+            "invalid_selector",
+            "message_id and call_id are required",
+            400,
+          );
+        }
+        response = await loadMiniAppChange(
+          sessionId,
+          messageId,
+          callId,
+          url.searchParams.get("file"),
+        );
+      } else {
+        response = await loadMiniAppDiff(sessionId, url.searchParams.get("file"));
+      }
       sendJson(res, 200, response);
     } catch (error) {
       if (error instanceof MiniAppDiffError) {

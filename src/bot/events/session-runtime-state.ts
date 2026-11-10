@@ -22,6 +22,7 @@ import {
   type SessionTargetPolicy,
   type TelegramDestination,
 } from "./telegram-event-delivery.js";
+import type { InlineKeyboard } from "grammy";
 
 const TOOL_ELAPSED_TICK_INTERVAL_MS = 5000;
 export const TOOL_ELAPSED_MAX_TRACKING_HOURS = 24;
@@ -57,7 +58,7 @@ interface RunningToolHooks {
 function isRunningBackgroundSubagent(subagent: SubagentInfo): boolean {
   return Boolean(
     outlivesParentTurn(subagent) &&
-      (subagent.status === "pending" || subagent.status === "running"),
+    (subagent.status === "pending" || subagent.status === "running"),
   );
 }
 
@@ -140,16 +141,17 @@ export class SessionRuntimeState {
           ...(keyboard ? { reply_markup: keyboard } : {}),
         });
       },
-      sendFile: async (sessionId, fileData) => {
+      sendFile: async (sessionId, fileData, toolKeyboard?: InlineKeyboard) => {
         const destination = this.getForegroundDestination(sessionId);
         if (!destination) {
           return;
         }
 
         const keyboard = getReplyKeyboard();
+        const replyMarkup = toolKeyboard ?? keyboard;
         await this.delivery.sendDocument(destination, fileData, {
           disable_notification: true,
-          ...(keyboard ? { reply_markup: keyboard } : {}),
+          ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
         });
       },
     });
@@ -195,19 +197,21 @@ export class SessionRuntimeState {
     this.toolCallStreamer = new ToolCallStreamer({
       throttleMs: getSessionStreamThrottleMs,
       takeGate: (sessionId) => this.takeReplyGate(sessionId),
-      sendText: (sessionId, text) =>
+      sendText: (sessionId, text, keyboard?: InlineKeyboard) =>
         this.delivery.sendText(
           this.requireForegroundDestination(sessionId, "Tool stream", "send"),
           text,
           {
             disable_notification: true,
+            ...(keyboard ? { reply_markup: keyboard } : {}),
           },
         ),
-      editText: (sessionId, messageId, text) =>
+      editText: (sessionId, messageId, text, keyboard?: InlineKeyboard) =>
         this.delivery.editText(
           this.requireForegroundDestination(sessionId, "Tool stream", "edit"),
           messageId,
           text,
+          keyboard,
         ),
       deleteText: (sessionId, messageId) =>
         this.delivery.deleteText(

@@ -16,7 +16,8 @@ vi.mock("../../../src/app/stores/settings-store.js", () => ({
   getCurrentProject,
 }));
 
-const { buildMiniAppKeyboard } = await import("../../../src/bot/pinned/mini-app-keyboard.js");
+const { buildMiniAppChangeKeyboard, buildMiniAppKeyboard } =
+  await import("../../../src/bot/pinned/mini-app-keyboard.js");
 
 describe("pinned Mini App keyboard", () => {
   it("creates file buttons for displayed files and an all-diffs button", () => {
@@ -51,5 +52,32 @@ describe("pinned Mini App keyboard", () => {
     const keyboard = buildMiniAppKeyboard("ses-1", files);
 
     expect(keyboard?.inline_keyboard).toHaveLength(11);
+  });
+
+  it("creates exact change buttons with persisted tool selectors", () => {
+    getCurrentProject.mockReturnValue({ worktree: "/repo" });
+
+    const keyboard = buildMiniAppChangeKeyboard({
+      sessionId: "ses-1",
+      messageId: "msg-1",
+      callId: "call-1",
+      tool: "edit",
+      input: {},
+      state: {
+        status: "completed",
+        input: {},
+        output: "",
+        title: "",
+        metadata: {},
+        time: { start: 0, end: 0 },
+      },
+      metadata: { filediff: { file: "/repo/src/example.ts" } },
+    });
+
+    expect(keyboard?.inline_keyboard[0]?.[0]).toMatchObject({
+      web_app: {
+        url: "https://bot.example/mini-app/?session_id=ses-1&file=src%2Fexample.ts&message_id=msg-1&call_id=call-1",
+      },
+    });
   });
 });

@@ -13,6 +13,8 @@ import type { TelegramRenderedPart } from "../render/types.js";
 
 type TelegramApi = Bot<Context>["api"];
 type SendMessageOptions = Parameters<TelegramApi["sendMessage"]>[2];
+type EditMessageOptions = Parameters<TelegramApi["editMessageText"]>[3];
+type ReplyMarkup = NonNullable<NonNullable<EditMessageOptions>["reply_markup"]>;
 type SendDocumentOptions = Parameters<TelegramApi["sendDocument"]>[2];
 type RenderedSendOptions = Parameters<typeof sendRenderedBotPart>[0]["options"];
 type RenderedEditOptions = Parameters<typeof editRenderedBotPart>[0]["options"];
@@ -68,9 +70,19 @@ export class TelegramEventDelivery {
     return sentMessage.message_id;
   }
 
-  async editText(destination: TelegramDestination, messageId: number, text: string): Promise<void> {
+  async editText(
+    destination: TelegramDestination,
+    messageId: number,
+    text: string,
+    replyMarkup?: ReplyMarkup,
+  ): Promise<void> {
     try {
-      await destination.api.editMessageText(destination.chatId, messageId, text);
+      await destination.api.editMessageText(
+        destination.chatId,
+        messageId,
+        text,
+        replyMarkup === undefined ? undefined : { reply_markup: replyMarkup },
+      );
     } catch (error) {
       if (isMessageNotModifiedError(error)) {
         return;

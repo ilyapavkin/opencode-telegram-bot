@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocked = vi.hoisted(() => ({
   validateInitData: vi.fn(),
   loadDiff: vi.fn(),
+  loadChange: vi.fn(),
 }));
 
 vi.mock("../../../src/config.js", () => ({
@@ -39,6 +40,7 @@ vi.mock("../../../src/app/services/mini-app-diff-service.js", () => ({
     }
   },
   loadMiniAppDiff: mocked.loadDiff,
+  loadMiniAppChange: mocked.loadChange,
 }));
 vi.mock("../../../src/opencode/client.js", () => ({
   opencodeClient: {
@@ -63,7 +65,13 @@ describe("mini-app server", () => {
     mocked.validateInitData.mockReset();
     mocked.validateInitData.mockReturnValue({ userId: 123 });
     mocked.loadDiff.mockReset();
+    mocked.loadChange.mockReset();
     mocked.loadDiff.mockResolvedValue({
+      session: { id: "ses-1", title: "Session", project: "repo", branch: "main" },
+      files: [],
+      selectedFile: null,
+    });
+    mocked.loadChange.mockResolvedValue({
       session: { id: "ses-1", title: "Session", project: "repo", branch: "main" },
       files: [],
       selectedFile: null,
@@ -104,6 +112,17 @@ describe("mini-app server", () => {
     expect(JSON.parse(result.body)).toMatchObject({ selectedFile: null });
     expect(mocked.validateInitData).toHaveBeenCalledWith("auth-date=data", "token", 123, 3600);
     expect(mocked.loadDiff).toHaveBeenCalledWith("ses-1", "src/a.ts");
+  });
+
+  it("loads an exact change using message and call selectors", async () => {
+    const result = await fetchAt(
+      "/mini-app/api/change?session_id=ses-1&message_id=msg-1&call_id=call-1&file=src%2Fa.ts",
+      { "X-Telegram-Init-Data": "auth-date=data" },
+    );
+
+    expect(result.status).toBe(200);
+    expect(mocked.loadChange).toHaveBeenCalledWith("ses-1", "msg-1", "call-1", "src/a.ts");
+    expect(mocked.loadDiff).not.toHaveBeenCalled();
   });
 
   async function fetchAt(

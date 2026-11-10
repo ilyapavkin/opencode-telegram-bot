@@ -10,6 +10,8 @@ export function readLaunchSelection(href: string): LaunchSelection {
   return {
     sessionId: nonEmpty(url.searchParams.get("session_id")),
     filePath: nonEmpty(url.searchParams.get("file")),
+    messageId: nonEmpty(url.searchParams.get("message_id")),
+    callId: nonEmpty(url.searchParams.get("call_id")),
   };
 }
 

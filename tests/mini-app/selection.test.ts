@@ -21,6 +21,8 @@ describe("mini app launch selection", () => {
     ).toEqual({
       sessionId: "s-1",
       filePath: "src/app.ts",
+      messageId: null,
+      callId: null,
     });
   });
 
