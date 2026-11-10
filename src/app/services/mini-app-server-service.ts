@@ -148,6 +148,7 @@ export class MiniAppServer {
       );
     } catch (error) {
       if (error instanceof MiniAppAuthError) {
+        logger.warn(`[MiniApp] Authentication rejected: ${error.message}`);
         sendJson(res, 401, {
           code: "unauthorized",
           message: "Telegram authentication was rejected",
