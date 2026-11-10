@@ -5,6 +5,7 @@ const mocked = vi.hoisted(() => ({
   currentProject: vi.fn(),
   sessionGet: vi.fn(),
   sessionDiff: vi.fn(),
+  sessionMessages: vi.fn(),
   gitContext: vi.fn(),
 }));
 
@@ -18,6 +19,7 @@ vi.mock("../../../src/opencode/client.js", () => ({
     session: {
       get: mocked.sessionGet,
       diff: mocked.sessionDiff,
+      messages: mocked.sessionMessages,
     },
   },
 }));
@@ -31,7 +33,7 @@ vi.mock("../../../src/app/services/worktree-service.js", () => ({
   getGitWorktreeContext: mocked.gitContext,
 }));
 
-const { MiniAppDiffError, loadMiniAppDiff } =
+const { MiniAppDiffError, loadMiniAppChange, loadMiniAppDiff } =
   await import("../../../src/app/services/mini-app-diff-service.js");
 
 describe("mini-app diff service", () => {
@@ -62,6 +64,7 @@ describe("mini-app diff service", () => {
         },
       ],
     });
+    mocked.sessionMessages.mockResolvedValue({ data: [] });
     mocked.gitContext.mockResolvedValue({ branch: "main" });
   });
 
@@ -121,6 +124,84 @@ describe("mini-app diff service", () => {
     await expect(loadMiniAppDiff("ses-1", null)).rejects.toMatchObject({
       code: "oversized",
       statusCode: 413,
+    });
+  });
+
+  it("loads an exact apply_patch change from persisted tool history", async () => {
+    mocked.sessionMessages.mockResolvedValue({
+      data: [
+        {
+          info: { id: "msg-1", sessionID: "ses-1", role: "assistant" },
+          parts: [
+            {
+              type: "tool",
+              callID: "call-1",
+              messageID: "msg-1",
+              state: {
+                status: "completed",
+                input: {},
+                output: "applied",
+                title: "Update file",
+                metadata: {
+                  files: [
+                    {
+                      relativePath: "src/example.ts",
+                      diff: "@@ -1 +1 @@\n-old\n+new\n",
+                    },
+                  ],
+                },
+              },
+              tool: "apply_patch",
+            },
+          ],
+        },
+      ],
+    });
+
+    await expect(loadMiniAppChange("ses-1", "msg-1", "call-1", "src/example.ts")).resolves.toEqual(
+      expect.objectContaining({
+        files: [
+          expect.objectContaining({
+            path: "src/example.ts",
+            patch: "@@ -1 +1 @@\n-old\n+new\n",
+          }),
+        ],
+        selectedFile: "src/example.ts",
+      }),
+    );
+  });
+
+  it("reconstructs a write change when the aggregate session diff is empty", async () => {
+    mocked.sessionMessages.mockResolvedValue({
+      data: [
+        {
+          info: { id: "msg-2", sessionID: "ses-1", role: "assistant" },
+          parts: [
+            {
+              type: "tool",
+              callID: "call-2",
+              messageID: "msg-2",
+              tool: "write",
+              state: {
+                status: "completed",
+                input: { filePath: "src/new.ts", content: "const value = 1;" },
+                output: "written",
+                title: "Write file",
+                metadata: {},
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    await expect(loadMiniAppChange("ses-1", "msg-2", "call-2", null)).resolves.toMatchObject({
+      files: [
+        expect.objectContaining({
+          path: "src/new.ts",
+          patch: "@@ -0,0 +1,1 @@\n+const value = 1;",
+        }),
+      ],
     });
   });
 });

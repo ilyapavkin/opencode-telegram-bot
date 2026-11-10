@@ -23,6 +23,7 @@ import {
   getDeleteCompactProgressOnFinish,
   getSendDiffFileAttachments,
 } from "../../../app/stores/settings-store.js";
+import { buildMiniAppChangeKeyboard } from "../../pinned/mini-app-keyboard.js";
 import type { RunningToolTick } from "../../streaming/running-tool-tracker.js";
 import type { ToolStreamKey } from "../../streaming/tool-call-streamer.js";
 import {
@@ -445,6 +446,7 @@ export function registerToolActivityHandlers(deps: ToolActivityDeps): void {
           getLiveToolPrefix(toolInfo.callId),
           durationMs === undefined ? message : withDuration(message, formatDuration(durationMs)),
           getToolStreamKey(toolInfo.tool),
+          buildMiniAppChangeKeyboard(toolInfo),
         );
         unpinLiveToolLine(runtime, toolInfo);
       }
@@ -516,6 +518,7 @@ export function registerToolActivityHandlers(deps: ToolActivityDeps): void {
             ? appendDurationToFirstLine(text, formatDuration(durationMs))
             : text,
           streamKey,
+          buildMiniAppChangeKeyboard(fileInfo),
         );
         unpinLiveToolLine(runtime, fileInfo);
       } else {
@@ -529,10 +532,14 @@ export function registerToolActivityHandlers(deps: ToolActivityDeps): void {
         if (!fileData) {
           continue;
         }
-        runtime.toolMessageBatcher.enqueueFile(fileInfo.sessionId, {
-          ...fileData,
-          caption: prepareDocumentCaption(line || toolMessage || fileData.caption),
-        });
+        runtime.toolMessageBatcher.enqueueFile(
+          fileInfo.sessionId,
+          {
+            ...fileData,
+            caption: prepareDocumentCaption(line || toolMessage || fileData.caption),
+          },
+          buildMiniAppChangeKeyboard(fileInfo),
+        );
       }
       await runtime.toolMessageBatcher.flushSession(fileInfo.sessionId, "tool_file_boundary");
     } catch (err) {

@@ -1,8 +1,6 @@
 import { logger } from "../../utils/logger.js";
-import {
-  resolveStreamThrottleMs,
-  type StreamThrottleMs,
-} from "./stream-throttle.js";
+import { InlineKeyboard } from "grammy";
+import { resolveStreamThrottleMs, type StreamThrottleMs } from "./stream-throttle.js";
 
 const TELEGRAM_MESSAGE_SAFE_LENGTH = 4000;
 const DEFAULT_STREAM_KEY = "default";
@@ -12,8 +10,13 @@ export type ToolStreamKey = "default" | "todo" | `subagent:${string}`;
 
 interface ToolCallStreamerOptions {
   throttleMs: StreamThrottleMs;
-  sendText: (sessionId: string, text: string) => Promise<number>;
-  editText: (sessionId: string, telegramMessageId: number, text: string) => Promise<void>;
+  sendText: (sessionId: string, text: string, keyboard?: InlineKeyboard) => Promise<number>;
+  editText: (
+    sessionId: string,
+    telegramMessageId: number,
+    text: string,
+    keyboard?: InlineKeyboard,
+  ) => Promise<void>;
   deleteText: (sessionId: string, telegramMessageId: number) => Promise<void>;
   /** Asked when a stream starts: what its first new message has to wait for, if anything. */
   takeGate?: (sessionId: string) => ToolStreamGate | undefined;
@@ -24,6 +27,7 @@ export type ToolStreamGate = () => Promise<void>;
 interface StreamEntry {
   prefix?: string;
   text: string;
+  keyboard?: InlineKeyboard | undefined;
 }
 
 interface StreamState {
@@ -32,6 +36,7 @@ interface StreamState {
   entries: StreamEntry[];
   latestParts: string[];
   lastSentParts: string[];
+  lastSentKeyboard: string | null;
   telegramMessageIds: number[];
   timer: ReturnType<typeof setTimeout> | null;
   task: Promise<boolean>;
@@ -121,6 +126,17 @@ function buildParts(entries: StreamEntry[]): string[] {
   return splitLongText(text, TELEGRAM_MESSAGE_SAFE_LENGTH).filter(Boolean);
 }
 
+function buildKeyboard(entries: StreamEntry[]): InlineKeyboard | undefined {
+  const rows = entries.flatMap((entry) => entry.keyboard?.inline_keyboard ?? []);
+  if (rows.length === 0) {
+    return undefined;
+  }
+
+  const keyboard = new InlineKeyboard();
+  keyboard.inline_keyboard.push(...rows);
+  return keyboard;
+}
+
 export class ToolCallStreamer {
   private readonly throttleMs: StreamThrottleMs;
   private readonly sendText: ToolCallStreamerOptions["sendText"];
@@ -133,7 +149,10 @@ export class ToolCallStreamer {
   private readonly lastTelegramOperationAt = new Map<string, number>();
   private readonly telegramOperationTokens = new Map<string, object>();
   private readonly heldSessions = new Set<string>();
-  private readonly documentBoundaries = new Map<string, { count: number; done: Promise<void>; release: () => void }>();
+  private readonly documentBoundaries = new Map<
+    string,
+    { count: number; done: Promise<void>; release: () => void }
+  >();
   private readonly frozenToolEntries = new Set<string>();
   // Lines of operations that outlive the turn: their message stays editable after a break.
   private readonly pinnedEntries = new Set<string>();
@@ -167,6 +186,7 @@ export class ToolCallStreamer {
     prefix: string,
     text: string,
     streamKey: ToolStreamKey = DEFAULT_STREAM_KEY,
+    keyboard?: InlineKeyboard,
   ): void {
     const normalizedPrefix = prefix.trim();
     const normalizedText = text.trim();
@@ -177,13 +197,15 @@ export class ToolCallStreamer {
       return;
     }
 
-    const state = this.findPrefixedState(sessionId, streamKey, normalizedPrefix) ??
+    const state =
+      this.findPrefixedState(sessionId, streamKey, normalizedPrefix) ??
       this.getOrCreateState(sessionId, streamKey);
     const existingEntry = state.entries.find((entry) => entry.prefix === normalizedPrefix);
     if (existingEntry) {
       existingEntry.text = normalizedText;
+      existingEntry.keyboard = keyboard;
     } else {
-      state.entries.push({ prefix: normalizedPrefix, text: normalizedText });
+      state.entries.push({ prefix: normalizedPrefix, text: normalizedText, keyboard });
     }
 
     state.latestParts = buildParts(state.entries);
@@ -230,7 +252,11 @@ export class ToolCallStreamer {
     }
   }
 
-  unpinEntry(sessionId: string, prefix: string, streamKey: ToolStreamKey = DEFAULT_STREAM_KEY): void {
+  unpinEntry(
+    sessionId: string,
+    prefix: string,
+    streamKey: ToolStreamKey = DEFAULT_STREAM_KEY,
+  ): void {
     this.pinnedEntries.delete(this.getEntryId(sessionId, streamKey, prefix.trim()));
   }
 
@@ -260,7 +286,9 @@ export class ToolCallStreamer {
       boundary.count++;
     } else {
       let release = () => {};
-      const done = new Promise<void>((resolve) => { release = resolve; });
+      const done = new Promise<void>((resolve) => {
+        release = resolve;
+      });
       this.documentBoundaries.set(sessionId, { count: 1, done, release });
     }
     this.heldSessions.add(sessionId);
@@ -290,10 +318,12 @@ export class ToolCallStreamer {
   async flushSession(sessionId: string, reason: string): Promise<void> {
     const states = this.getStatesForSession(sessionId);
     await Promise.all(
-      states.filter((state) => !state.held).map(async (state) => {
-        this.clearTimer(state);
-        await this.enqueueTask(state, () => this.syncState(state, reason));
-      }),
+      states
+        .filter((state) => !state.held)
+        .map(async (state) => {
+          this.clearTimer(state);
+          await this.enqueueTask(state, () => this.syncState(state, reason));
+        }),
     );
   }
 
@@ -431,15 +461,21 @@ export class ToolCallStreamer {
     return Array.from(this.allStates).filter((state) => state.sessionId === sessionId);
   }
 
-  private findPrefixedState(sessionId: string, key: ToolStreamKey, prefix: string): StreamState | undefined {
+  private findPrefixedState(
+    sessionId: string,
+    key: ToolStreamKey,
+    prefix: string,
+  ): StreamState | undefined {
     if (!prefix.startsWith("⏳") && !key.startsWith("subagent:")) {
-      return this.states.get(this.getStateId(sessionId, key))?.entries.some((entry) => entry.prefix === prefix)
+      return this.states
+        .get(this.getStateId(sessionId, key))
+        ?.entries.some((entry) => entry.prefix === prefix)
         ? this.states.get(this.getStateId(sessionId, key))
         : undefined;
     }
-    return this.getStatesForSession(sessionId).reverse().find((state) =>
-      state.key === key && state.entries.some((entry) => entry.prefix === prefix),
-    );
+    return this.getStatesForSession(sessionId)
+      .reverse()
+      .find((state) => state.key === key && state.entries.some((entry) => entry.prefix === prefix));
   }
 
   private getOrCreateState(
@@ -463,6 +499,7 @@ export class ToolCallStreamer {
       entries: [],
       latestParts: [],
       lastSentParts: [],
+      lastSentKeyboard: null,
       telegramMessageIds: [],
       timer: null,
       task: Promise.resolve(true),
@@ -547,9 +584,12 @@ export class ToolCallStreamer {
 
     while (!state.isBroken && !state.cancelled) {
       const parts = state.latestParts;
+      const keyboard = buildKeyboard(state.entries);
+      const keyboardSignature = keyboard ? JSON.stringify(keyboard.inline_keyboard) : null;
       const unchanged =
         parts.length === state.lastSentParts.length &&
-        parts.every((part, index) => state.lastSentParts[index] === part);
+        parts.every((part, index) => state.lastSentParts[index] === part) &&
+        state.lastSentKeyboard === keyboardSignature;
 
       if (unchanged) {
         return state.telegramMessageIds.length > 0;
@@ -560,8 +600,9 @@ export class ToolCallStreamer {
       }
 
       try {
-        await this.syncMessages(state, parts);
+        await this.syncMessages(state, parts, keyboard);
         state.deleteWhenEmpty = false;
+        state.lastSentKeyboard = keyboardSignature;
         if (state.cancelled) {
           return false;
         }
@@ -608,33 +649,32 @@ export class ToolCallStreamer {
     );
   }
 
-  private enqueueTelegramOperation<T>(
-    sessionId: string,
-    operation: () => Promise<T>,
-  ): Promise<T> {
+  private enqueueTelegramOperation<T>(sessionId: string, operation: () => Promise<T>): Promise<T> {
     const token = this.telegramOperationTokens.get(sessionId) ?? {};
     this.telegramOperationTokens.set(sessionId, token);
     const previousTask = this.telegramOperationTasks.get(sessionId) ?? Promise.resolve();
-    const task = previousTask.catch(() => undefined).then(async () => {
-      const throttleMs = this.resolveThrottleMs(sessionId);
-      const lastOperationAt = this.lastTelegramOperationAt.get(sessionId);
-      if (lastOperationAt !== undefined) {
-        const remainingDelayMs = throttleMs - (Date.now() - lastOperationAt);
-        if (remainingDelayMs > 0) {
-          await delay(remainingDelayMs);
+    const task = previousTask
+      .catch(() => undefined)
+      .then(async () => {
+        const throttleMs = this.resolveThrottleMs(sessionId);
+        const lastOperationAt = this.lastTelegramOperationAt.get(sessionId);
+        if (lastOperationAt !== undefined) {
+          const remainingDelayMs = throttleMs - (Date.now() - lastOperationAt);
+          if (remainingDelayMs > 0) {
+            await delay(remainingDelayMs);
+          }
         }
-      }
 
-      if (this.telegramOperationTokens.get(sessionId) !== token) {
-        throw new TelegramOperationCancelledError();
-      }
+        if (this.telegramOperationTokens.get(sessionId) !== token) {
+          throw new TelegramOperationCancelledError();
+        }
 
-      try {
-        return await operation();
-      } finally {
-        this.lastTelegramOperationAt.set(sessionId, Date.now());
-      }
-    });
+        try {
+          return await operation();
+        } finally {
+          this.lastTelegramOperationAt.set(sessionId, Date.now());
+        }
+      });
 
     this.telegramOperationTasks.set(
       sessionId,
@@ -679,7 +719,11 @@ export class ToolCallStreamer {
     });
   }
 
-  private async syncMessages(state: StreamState, parts: string[]): Promise<void> {
+  private async syncMessages(
+    state: StreamState,
+    parts: string[],
+    keyboard?: InlineKeyboard,
+  ): Promise<void> {
     for (let index = 0; index < parts.length; index++) {
       if (state.cancelled) {
         return;
@@ -693,7 +737,9 @@ export class ToolCallStreamer {
 
       if (currentMessageId) {
         await this.enqueueTelegramOperation(state.sessionId, () =>
-          this.editText(state.sessionId, currentMessageId, text),
+          keyboard
+            ? this.editText(state.sessionId, currentMessageId, text, keyboard)
+            : this.editText(state.sessionId, currentMessageId, text),
         );
         state.lastSentParts[index] = text;
         continue;
@@ -708,7 +754,9 @@ export class ToolCallStreamer {
       }
 
       const messageId = await this.enqueueTelegramOperation(state.sessionId, () =>
-        this.sendText(state.sessionId, text),
+        keyboard
+          ? this.sendText(state.sessionId, text, keyboard)
+          : this.sendText(state.sessionId, text),
       );
       state.telegramMessageIds[index] = messageId;
       state.lastSentParts[index] = text;

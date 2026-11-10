@@ -1,7 +1,8 @@
 import { ApiError } from "./types.js";
 import type { DiffFile, DiffResponse, LaunchSelection } from "./types.js";
 
-const API_PATH = "/mini-app/api/diff";
+const DIFF_API_PATH = "/mini-app/api/diff";
+const CHANGE_API_PATH = "/mini-app/api/change";
 
 export async function fetchDiff(selection: LaunchSelection): Promise<DiffResponse> {
   const initData = window.Telegram?.WebApp?.initData ?? "";
@@ -11,14 +12,22 @@ export async function fetchDiff(selection: LaunchSelection): Promise<DiffRespons
   if (selection.sessionId === null) {
     throw new ApiError("unavailable", "This link does not contain a session.");
   }
+  if ((selection.messageId === null) !== (selection.callId === null)) {
+    throw new ApiError("unavailable", "This link does not contain a complete change selector.");
+  }
 
   const params = new URLSearchParams({ session_id: selection.sessionId });
   if (selection.filePath !== null) params.set("file", selection.filePath);
+  if (selection.messageId !== null) params.set("message_id", selection.messageId);
+  if (selection.callId !== null) params.set("call_id", selection.callId);
   let response: Response;
   try {
-    response = await fetch(`${API_PATH}?${params.toString()}`, {
-      headers: { "X-Telegram-Init-Data": initData },
-    });
+    response = await fetch(
+      `${selection.messageId === null ? DIFF_API_PATH : CHANGE_API_PATH}?${params.toString()}`,
+      {
+        headers: { "X-Telegram-Init-Data": initData },
+      },
+    );
   } catch {
     throw new ApiError("unavailable", "The diff service could not be reached.");
   }

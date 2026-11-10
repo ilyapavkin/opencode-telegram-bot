@@ -1,8 +1,13 @@
 import type { CodeFileData } from "./summary-formatter.js";
 import { logger } from "../../utils/logger.js";
+import type { InlineKeyboard } from "grammy";
 
 type SendTextCallback = (sessionId: string, text: string) => Promise<void>;
-type SendFileCallback = (sessionId: string, fileData: CodeFileData) => Promise<void>;
+type SendFileCallback = (
+  sessionId: string,
+  fileData: CodeFileData,
+  keyboard?: InlineKeyboard,
+) => Promise<void>;
 type TextGate = () => Promise<void>;
 
 interface ToolMessageBatcherOptions {
@@ -49,7 +54,7 @@ export class ToolMessageBatcher {
     this.sendTextNow(sessionId, message, "enqueue_unique_by_prefix");
   }
 
-  enqueueFile(sessionId: string, fileData: CodeFileData): void {
+  enqueueFile(sessionId: string, fileData: CodeFileData, keyboard?: InlineKeyboard): void {
     if (!sessionId) {
       return;
     }
@@ -57,7 +62,7 @@ export class ToolMessageBatcher {
     const expectedGeneration = this.generation;
     logger.debug(`[ToolBatcher] Sending file message: session=${sessionId}`);
     void this.enqueueTask(sessionId, () =>
-      this.sendFileSafe(sessionId, fileData, "enqueue_file", expectedGeneration),
+      this.sendFileSafe(sessionId, fileData, keyboard, "enqueue_file", expectedGeneration),
     );
   }
 
@@ -124,6 +129,7 @@ export class ToolMessageBatcher {
   private async sendFileSafe(
     sessionId: string,
     fileData: CodeFileData,
+    keyboard: InlineKeyboard | undefined,
     reason: string,
     expectedGeneration: number,
   ): Promise<void> {
@@ -135,7 +141,11 @@ export class ToolMessageBatcher {
     }
 
     try {
-      await this.sendFile(sessionId, fileData);
+      if (keyboard) {
+        await this.sendFile(sessionId, fileData, keyboard);
+      } else {
+        await this.sendFile(sessionId, fileData);
+      }
     } catch (err) {
       logger.error(
         `[ToolBatcher] Failed to send tool file message: session=${sessionId}, reason=${reason}`,
