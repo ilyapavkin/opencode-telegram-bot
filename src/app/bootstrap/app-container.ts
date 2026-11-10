@@ -24,6 +24,7 @@ import { SummaryAggregator } from "../managers/summary-aggregation-manager.js";
 import { GoalService } from "../services/goal-service.js";
 import { HealthServer } from "../services/health-server-service.js";
 import { MiniAppServer } from "../services/mini-app-server-service.js";
+import { SshUnlockService } from "../services/ssh-unlock-service.js";
 import { formatDashboardGoalLine } from "../formatters/goal-text.js";
 import { ScheduledTaskRuntime } from "../services/scheduled-task-runtime-service.js";
 import { GatewayClient } from "../../gateway/client.js";
@@ -51,6 +52,7 @@ export interface AppContainer {
   readonly gatewayMonitor: GatewayMonitor;
   readonly healthServer: HealthServer;
   readonly miniAppServer: MiniAppServer;
+  readonly sshUnlockService: SshUnlockService;
   readonly interactionManager: InteractionManager;
   readonly keyboardManager: KeyboardManager;
   readonly opencodeAutoRestartService: OpencodeAutoRestartService;
@@ -108,6 +110,7 @@ export function createAppContainer(): AppContainer {
   const summaryAggregator = new SummaryAggregator();
   const gatewayClient = new GatewayClient();
   const gatewayMonitor = new GatewayMonitor(gatewayClient);
+  const sshUnlockService = new SshUnlockService();
 
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   let unsubscribeReadyRestore: (() => void) | null = null;
@@ -135,7 +138,8 @@ export function createAppContainer(): AppContainer {
     gatewayClient,
     gatewayMonitor,
     healthServer: new HealthServer(),
-    miniAppServer: new MiniAppServer(),
+    miniAppServer: new MiniAppServer(undefined, sshUnlockService),
+    sshUnlockService,
     interactionManager,
     keyboardManager: new KeyboardManager(goalManager),
     opencodeAutoRestartService: new OpencodeAutoRestartService(opencodeReadyLifecycle),
@@ -148,7 +152,8 @@ export function createAppContainer(): AppContainer {
     summaryAggregator,
     taskCreationManager: new TaskCreationManager(interactionManager),
 
-    ensureEventSubscription: (directory) => eventSubscriptionService.ensureEventSubscription(directory),
+    ensureEventSubscription: (directory) =>
+      eventSubscriptionService.ensureEventSubscription(directory),
     setTelegramContext: (bot, chatId) => eventSubscriptionService.setTelegramContext(bot, chatId),
 
     startHeartbeat: () => {

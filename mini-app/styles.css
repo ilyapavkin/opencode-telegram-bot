@@ -47,6 +47,12 @@ button:focus-visible {
   padding: max(20px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
 }
 
+.ssh-shell {
+  width: min(680px, 100%);
+  margin: 0 auto;
+  padding: max(20px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
+}
+
 .app-header {
   padding: 8px 4px 20px;
 }
@@ -108,8 +114,13 @@ h1 {
 
 .state-card[data-state="unauthorized"] h2,
 .state-card[data-state="unavailable"] h2,
-.state-card[data-state="oversized"] h2 {
+.state-card[data-state="oversized"] h2,
+.state-card[data-state="locked"] h2 {
   color: var(--danger);
+}
+
+.state-card[data-state="unlocked"] h2 {
+  color: var(--addition-line);
 }
 
 .state-spinner {
@@ -122,6 +133,53 @@ h1 {
 
 .state-card:not([data-state="loading"]) .state-spinner {
   display: none;
+}
+
+.ssh-card {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.ssh-card h2 {
+  font-size: 18px;
+}
+
+.ssh-warning,
+.ssh-fingerprint {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ssh-label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ssh-input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font: inherit;
+}
+
+.ssh-input:focus {
+  outline: 3px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  outline-offset: 1px;
+}
+
+.ssh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
 }
 
 .workspace {

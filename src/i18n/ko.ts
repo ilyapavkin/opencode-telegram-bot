@@ -498,6 +498,7 @@ export const ko: I18nDictionary = {
   "pinned.files.more": "  ... 외 {count}개",
   "pinned.files.open": "🔍 {path}",
   "pinned.files.open_all": "🔍 모든 diff 열기",
+  "pinned.ssh.open": "🔐 SSH 키",
 
   "tool.todo.overflow": "*({count}개 작업 더 보기)*",
   "tool.file_header.write":

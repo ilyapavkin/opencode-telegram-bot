@@ -505,6 +505,7 @@ export const ru: I18nDictionary = {
   "pinned.files.more": "  ... и еще {count}",
   "pinned.files.open": "🔍 {path}",
   "pinned.files.open_all": "🔍 Открыть все диффы",
+  "pinned.ssh.open": "🔐 SSH-ключ",
 
   "tool.todo.overflow": "*(ещё {count} задач)*",
   "tool.file_header.write":

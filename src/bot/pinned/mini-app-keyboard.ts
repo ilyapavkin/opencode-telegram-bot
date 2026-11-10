@@ -12,25 +12,34 @@ export function buildMiniAppKeyboard(
   sessionId: string | null,
   files: FileChange[],
 ): InlineKeyboard | undefined {
-  if (!config.miniApp.enabled || !config.miniApp.url || !sessionId) {
+  const canOpenDiff = config.miniApp.enabled && config.miniApp.url && sessionId;
+  const canOpenSsh = config.ssh?.enabled && config.ssh.miniAppUrl;
+  if (!canOpenDiff && !canOpenSsh) {
     return undefined;
   }
 
   const keyboard = new InlineKeyboard();
-  for (const file of files.slice(0, MAX_DISPLAYED_FILES)) {
-    const selector = toFileSelector(file.file);
-    if (!selector) {
-      continue;
+  if (canOpenDiff && sessionId) {
+    for (const file of files.slice(0, MAX_DISPLAYED_FILES)) {
+      const selector = toFileSelector(file.file);
+      if (!selector) {
+        continue;
+      }
+
+      keyboard.webApp(
+        t("pinned.files.open", { path: shortenLabel(selector) }),
+        buildMiniAppUrl(sessionId, selector),
+      );
+      keyboard.row();
     }
 
-    keyboard.webApp(
-      t("pinned.files.open", { path: shortenLabel(selector) }),
-      buildMiniAppUrl(sessionId, selector),
-    );
-    keyboard.row();
+    keyboard.webApp(t("pinned.files.open_all"), buildMiniAppUrl(sessionId));
   }
 
-  keyboard.webApp(t("pinned.files.open_all"), buildMiniAppUrl(sessionId));
+  if (canOpenSsh) {
+    if (keyboard.inline_keyboard.length > 0) keyboard.row();
+    keyboard.webApp(t("pinned.ssh.open"), config.ssh.miniAppUrl);
+  }
   return keyboard;
 }
 

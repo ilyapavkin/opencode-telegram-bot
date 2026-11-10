@@ -585,6 +585,7 @@ export const en = {
   "pinned.files.more": "  ... and {count} more",
   "pinned.files.open": "🔍 {path}",
   "pinned.files.open_all": "🔍 Open all diffs",
+  "pinned.ssh.open": "🔐 SSH key",
 
   "tool.todo.overflow": "*({count} more tasks)*",
   "tool.file_header.write":

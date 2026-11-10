@@ -491,6 +491,7 @@ export const tr: I18nDictionary = {
   "pinned.files.more": "  ... ve {count} tane daha",
   "pinned.files.open": "🔍 {path}",
   "pinned.files.open_all": "🔍 Tüm diff'leri aç",
+  "pinned.ssh.open": "🔐 SSH anahtarı",
 
   "tool.todo.overflow": "*({count} görev daha)*",
   "tool.file_header.write":

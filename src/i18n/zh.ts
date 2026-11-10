@@ -456,6 +456,7 @@ export const zh: I18nDictionary = {
   "pinned.files.more": "  ... 还有 {count} 个",
   "pinned.files.open": "🔍 {path}",
   "pinned.files.open_all": "🔍 打开全部 diff",
+  "pinned.ssh.open": "🔐 SSH 密钥",
 
   "tool.todo.overflow": "*(还有 {count} 个任务)*",
   "tool.file_header.write":

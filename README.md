@@ -48,6 +48,7 @@ Languages: English (`en`), العربية (`ar`), Deutsch (`de`), Español (`es`
 - **Security** — strict user ID whitelist; no one else can access your bot, even if they find it
 - **Localization** — UI localization is supported for multiple languages (`BOT_LOCALE`)
 - **Docker support** — run the bot as a container while OpenCode stays on the host; see [Docker Deployment](#docker-deployment)
+- **SSH key unlock** — unlock the configured Git SSH key through an authenticated Mini App; see [SSH Key Unlock](#ssh-key-unlock)
 - **Interactive file browser** — use `/ls` to browse files and directories inside the current project, open subdirectories, go back, and download files by tapping them
 - **Attach a file to your next prompt** — tap **📎 Attach to next prompt** on a text file in `/ls`, and it is sent to OpenCode together with your next message, once
 
@@ -301,6 +302,11 @@ Configuration can be provided through process environment variables or an `.env`
 | `TELEGRAM_MINI_APP_PORT`                   | Internal Mini App HTTP port                                                                                       | No | `3101` |
 | `TELEGRAM_MINI_APP_INIT_DATA_MAX_AGE_SEC`  | Maximum age of Telegram Web App authentication data in seconds                                                   | No | `86400` |
 | `TELEGRAM_MINI_APP_MAX_DIFF_BYTES`         | Maximum combined patch bytes returned by one Mini App request                                                   | No | `1048576` |
+| `TELEGRAM_SSH_MINI_APP_URL`                | Public HTTPS URL for the SSH key Mini App                                                                      | No | — |
+| `SSH_HELPER_URL`                            | HTTPS Traefik URL for the SSH helper                                                                          | No | — |
+| `SSH_HELPER_SIGNING_PRIVATE_KEY_FILE`      | Bot Ed25519 private key used to sign helper requests                                                           | No | — |
+| `SSH_UNLOCK_REQUEST_TTL_SEC`               | Lifetime of one SSH unlock authorization                                                                      | No | `300` |
+| `SSH_UNLOCK_MAX_ATTEMPTS`                  | Failed unlock attempts allowed in one TTL window                                                              | No | `5` |
 
 > **Keep your `.env` file private.** It may contain your bot token and server password. For Docker or Swarm deployments, prefer mounting these values as secret files with `TELEGRAM_BOT_TOKEN_FILE` and `OPENCODE_SERVER_PASSWORD_FILE`. Never commit secrets to version control.
 
@@ -474,6 +480,16 @@ The bot enforces a strict **user ID whitelist**. Only the Telegram user whose nu
 Since the bot runs locally on your machine and connects to your local OpenCode server, there is no external attack surface beyond the Telegram Bot API itself. The optional health endpoint (`BOT_HEALTH_PORT`) binds to `127.0.0.1` only and serves read-only status.
 
 When `TELEGRAM_MINI_APP_ENABLED=true`, the Mini App is a separate read-only HTTP service. It validates Telegram Web App `initData` against the bot token and only serves the session currently shown on the pinned dashboard. Put it behind an HTTPS reverse proxy; never expose the internal port directly to the internet.
+
+### SSH Key Unlock
+
+The optional SSH Mini App unlocks one configured key into a local `ssh-agent`. The passphrase is encrypted in the browser with the helper's public key and is never sent as a Telegram message, persisted in the browser, or logged by the bot.
+
+The bot forwards only short-lived, one-time, Ed25519-signed requests to the standalone `ssh-helper/` service. HTTPS must terminate at the Traefik route, and the helper port must be reachable only from Traefik. mTLS is optional and is not required by the protocol; request signatures are mandatory.
+
+Set the bot variables from `.env.example`, deploy the helper on the same Linux machine as OpenCode, and open the SSH key button from the pinned dashboard. The helper keeps the key in `ssh-agent` until the agent restarts, the configured key lifetime expires, or the key is locked from the Mini App.
+
+The helper package and systemd unit guidance are documented in [`docs/SSH_KEY_UNLOCK_SETUP.md`](./docs/SSH_KEY_UNLOCK_SETUP.md).
 
 ## Development
 

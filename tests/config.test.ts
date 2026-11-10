@@ -178,10 +178,7 @@ describe("config boolean env parsing", () => {
   });
 
   it("parses PROJECTS_EXCLUDED_PATHS as a comma-separated path list", async () => {
-    vi.stubEnv(
-      "PROJECTS_EXCLUDED_PATHS",
-      "/home/user/repo-a,/home/user/repo-b,/home/user/repo-c",
-    );
+    vi.stubEnv("PROJECTS_EXCLUDED_PATHS", "/home/user/repo-a,/home/user/repo-b,/home/user/repo-c");
 
     const config = await loadConfig();
 
@@ -501,6 +498,54 @@ describe("mini app configuration", () => {
     vi.stubEnv("TELEGRAM_MINI_APP_URL", "http://bot.example/mini-app");
 
     expect(() => buildMiniAppConfig()).toThrow(/TELEGRAM_MINI_APP_URL/);
+  });
+});
+
+describe("SSH unlock configuration", () => {
+  beforeEach(() => {
+    vi.stubEnv("SSH_HELPER_URL", "");
+    vi.stubEnv("TELEGRAM_SSH_MINI_APP_URL", "");
+    vi.stubEnv("SSH_HELPER_SIGNING_PRIVATE_KEY_FILE", "");
+    vi.stubEnv("SSH_UNLOCK_REQUEST_TTL_SEC", "");
+    vi.stubEnv("SSH_UNLOCK_MAX_ATTEMPTS", "");
+  });
+
+  it("keeps SSH unlock disabled by default", async () => {
+    const { buildSshConfig } = await loadConfigModule();
+
+    expect(buildSshConfig()).toEqual({
+      enabled: false,
+      miniAppUrl: "",
+      helperUrl: "",
+      signingPrivateKeyFile: "",
+      unlockRequestTtlSec: 300,
+      maxAttempts: 5,
+    });
+  });
+
+  it("requires all SSH unlock values when the feature is enabled", async () => {
+    const { buildSshConfig } = await loadConfigModule();
+    vi.stubEnv("TELEGRAM_SSH_MINI_APP_URL", "https://bot.example/mini-app/ssh");
+
+    expect(() => buildSshConfig()).toThrow(/SSH key unlock requires/);
+  });
+
+  it("accepts a complete HTTPS configuration", async () => {
+    const { buildSshConfig } = await loadConfigModule();
+    vi.stubEnv("TELEGRAM_SSH_MINI_APP_URL", "https://bot.example/mini-app/ssh/");
+    vi.stubEnv("SSH_HELPER_URL", "https://bot.example/internal/ssh-helper/");
+    vi.stubEnv("SSH_HELPER_SIGNING_PRIVATE_KEY_FILE", "/run/secrets/ssh-signing-key");
+    vi.stubEnv("SSH_UNLOCK_REQUEST_TTL_SEC", "120");
+    vi.stubEnv("SSH_UNLOCK_MAX_ATTEMPTS", "3");
+
+    expect(buildSshConfig()).toEqual({
+      enabled: true,
+      miniAppUrl: "https://bot.example/mini-app/ssh",
+      helperUrl: "https://bot.example/internal/ssh-helper",
+      signingPrivateKeyFile: "/run/secrets/ssh-signing-key",
+      unlockRequestTtlSec: 120,
+      maxAttempts: 3,
+    });
   });
 });
 

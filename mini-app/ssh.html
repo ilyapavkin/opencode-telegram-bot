@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>SSH key</title>
+    <link rel="stylesheet" href="../assets/styles.css" />
+  </head>
+  <body>
+    <main class="ssh-shell">
+      <header class="app-header">
+        <div class="eyebrow">OPENCODE / SSH KEY</div>
+        <h1>SSH key</h1>
+        <p class="session-meta">Unlock the configured Git key for the OpenCode machine.</p>
+      </header>
+
+      <section id="ssh-state" class="state-card" data-state="loading" role="status" aria-live="polite">
+        <div class="state-spinner" aria-hidden="true"></div>
+        <h2 id="ssh-state-title">Loading SSH status</h2>
+        <p id="ssh-state-message">Checking the local ssh-agent.</p>
+      </section>
+
+      <section class="ssh-card" aria-labelledby="ssh-form-title">
+        <h2 id="ssh-form-title">Unlock key</h2>
+        <p class="ssh-warning">The passphrase is encrypted in this browser and is never sent as a Telegram message.</p>
+        <label class="ssh-label" for="ssh-passphrase">Passphrase</label>
+        <input id="ssh-passphrase" class="ssh-input" type="password" autocomplete="current-password" />
+        <div class="ssh-actions">
+          <button id="ssh-unlock" class="action-button" type="button">Unlock</button>
+          <button id="ssh-lock" class="action-button" type="button">Lock</button>
+          <button id="ssh-refresh" class="action-button" type="button">Refresh</button>
+        </div>
+        <p id="ssh-fingerprint" class="ssh-fingerprint"></p>
+      </section>
+
+      <script src="https://telegram.org/js/telegram-web-app.js"></script>
+      <script type="module" src="../assets/ssh-main.js"></script>
+    </main>
+  </body>
+</html>
