@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Diff viewer</title>
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="eyebrow">OPENCODE / DIFF VIEWER</div>
+        <h1 id="session-title">Loading session</h1>
+        <p id="session-meta" class="session-meta"></p>
+      </header>
+
+      <div id="state" class="state-card" data-state="loading" role="status" aria-live="polite">
+        <div class="state-spinner" aria-hidden="true"></div>
+        <h2 id="state-title">Loading diff</h2>
+        <p id="state-message">Fetching the current session changes.</p>
+      </div>
+
+      <div id="workspace" class="workspace" hidden>
+        <aside class="file-panel" aria-label="Changed files">
+          <div class="panel-heading">
+            <span>Changed files</span>
+            <span id="file-count" class="count-badge">0</span>
+          </div>
+          <ul id="file-list" class="file-list"></ul>
+        </aside>
+
+        <main class="diff-panel">
+          <div class="toolbar" role="toolbar" aria-label="Diff actions">
+            <div class="view-toggle" role="group" aria-label="Diff view">
+              <button id="unified-button" class="toggle-button is-active" type="button">
+                Unified
+              </button>
+              <button id="split-button" class="toggle-button" type="button">Side by side</button>
+            </div>
+            <div class="action-buttons">
+              <button id="copy-button" class="action-button" type="button">Copy patch</button>
+              <button id="download-button" class="action-button" type="button">Download</button>
+              <button id="refresh-button" class="action-button" type="button">Refresh</button>
+            </div>
+          </div>
+
+          <section id="selected-file" class="selected-file" aria-labelledby="file-title">
+            <div class="selected-file-heading">
+              <div>
+                <div id="file-status" class="eyebrow">FILE</div>
+                <h2 id="file-title">Select a file</h2>
+              </div>
+              <span id="file-stats" class="file-stats"></span>
+            </div>
+            <div id="diff-view" class="diff-view"></div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script type="module" src="./assets/main.js"></script>
+  </body>
+</html>

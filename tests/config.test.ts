@@ -36,6 +36,12 @@ async function createSecretFile(content: string): Promise<{
 
 beforeEach(() => {
   vi.stubEnv("OPENCODE_SERVER_MODE", "");
+  vi.stubEnv("TELEGRAM_MINI_APP_ENABLED", "false");
+  vi.stubEnv("TELEGRAM_MINI_APP_URL", "");
+  vi.stubEnv("TELEGRAM_MINI_APP_BIND_HOST", "");
+  vi.stubEnv("TELEGRAM_MINI_APP_PORT", "");
+  vi.stubEnv("TELEGRAM_MINI_APP_INIT_DATA_MAX_AGE_SEC", "");
+  vi.stubEnv("TELEGRAM_MINI_APP_MAX_DIFF_BYTES", "");
 });
 
 describe("opencode server mode", () => {
@@ -435,6 +441,66 @@ describe("config boolean env parsing", () => {
 
     expect(config.tts.model).toBe("eleven_flash_v2_5");
     expect(config.tts.voice).toBe("21m00Tcm4TlvDq8ikWAM");
+  });
+});
+
+describe("mini app configuration", () => {
+  beforeEach(() => {
+    vi.stubEnv("TELEGRAM_BOT_TOKEN", "test-telegram-token");
+    vi.stubEnv("TELEGRAM_ALLOWED_USER_ID", "123456789");
+    vi.stubEnv("OPENCODE_MODEL_PROVIDER", "test-provider");
+    vi.stubEnv("OPENCODE_MODEL_ID", "test-model");
+    vi.stubEnv("TELEGRAM_MINI_APP_ENABLED", "false");
+    vi.stubEnv("TELEGRAM_MINI_APP_URL", "");
+  });
+
+  it("keeps the Mini App disabled by default", async () => {
+    const config = await loadConfig();
+
+    expect(config.miniApp).toEqual({
+      enabled: false,
+      url: "",
+      bindHost: "127.0.0.1",
+      port: 3101,
+      initDataMaxAgeSec: 86400,
+      maxDiffBytes: 1048576,
+    });
+  });
+
+  it("accepts an enabled HTTPS Mini App URL and custom limits", async () => {
+    vi.stubEnv("TELEGRAM_MINI_APP_ENABLED", "true");
+    vi.stubEnv("TELEGRAM_MINI_APP_URL", "https://bot.example/mini-app/");
+    vi.stubEnv("TELEGRAM_MINI_APP_BIND_HOST", "0.0.0.0");
+    vi.stubEnv("TELEGRAM_MINI_APP_PORT", "3201");
+    vi.stubEnv("TELEGRAM_MINI_APP_INIT_DATA_MAX_AGE_SEC", "300");
+    vi.stubEnv("TELEGRAM_MINI_APP_MAX_DIFF_BYTES", "2048");
+
+    const config = await loadConfig();
+
+    expect(config.miniApp).toEqual({
+      enabled: true,
+      url: "https://bot.example/mini-app",
+      bindHost: "0.0.0.0",
+      port: 3201,
+      initDataMaxAgeSec: 300,
+      maxDiffBytes: 2048,
+    });
+  });
+
+  it("falls back to the default port when the configured port is out of range", async () => {
+    vi.stubEnv("TELEGRAM_MINI_APP_PORT", "70000");
+
+    const config = await loadConfig();
+
+    expect(config.miniApp.port).toBe(3101);
+  });
+
+  it("fails fast when enabled with a non-HTTPS URL", async () => {
+    const { buildMiniAppConfig } = await loadConfigModule();
+    vi.stubEnv("TELEGRAM_MINI_APP_ENABLED", "true");
+    vi.stubEnv("TELEGRAM_MINI_APP_URL", "http://bot.example/mini-app");
+
+    expect(() => buildMiniAppConfig()).toThrow(/TELEGRAM_MINI_APP_URL/);
   });
 });
 

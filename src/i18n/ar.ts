@@ -477,6 +477,8 @@ export const ar: I18nDictionary = {
   "pinned.files.title": "الملفات ({count}):",
   "pinned.files.item": "  {path}{diff}",
   "pinned.files.more": "  ... و{count} أخرى",
+  "pinned.files.open": "🔍 {path}",
+  "pinned.files.open_all": "🔍 فتح كل الفروقات",
 
   "tool.todo.overflow": "*({count} مهام أخرى)*",
   "tool.file_header.write":

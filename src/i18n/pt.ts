@@ -505,6 +505,8 @@ export const pt: I18nDictionary = {
   "pinned.files.title": "Arquivos ({count}):",
   "pinned.files.item": "  {path}{diff}",
   "pinned.files.more": "  ... e mais {count}",
+  "pinned.files.open": "🔍 {path}",
+  "pinned.files.open_all": "🔍 Abrir todos os diffs",
 
   "tool.todo.overflow": "*(mais {count} tarefas)*",
   "tool.file_header.write":

@@ -91,6 +91,44 @@ function getOptionalBooleanEnvVar(key: string, defaultValue: boolean): boolean {
   return defaultValue;
 }
 
+export function buildMiniAppConfig(): {
+  enabled: boolean;
+  url: string;
+  bindHost: string;
+  port: number;
+  initDataMaxAgeSec: number;
+  maxDiffBytes: number;
+} {
+  const enabled = getOptionalBooleanEnvVar("TELEGRAM_MINI_APP_ENABLED", false);
+  const url = getEnvVar("TELEGRAM_MINI_APP_URL", false).trim().replace(/\/+$/, "");
+  const configuredPort = getOptionalPositiveIntEnvVar("TELEGRAM_MINI_APP_PORT", 3101);
+
+  if (enabled) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.search || parsed.hash) {
+        throw new Error();
+      }
+    } catch {
+      throw new Error(
+        "TELEGRAM_MINI_APP_URL must be a valid HTTPS URL without credentials, query, or hash when TELEGRAM_MINI_APP_ENABLED is enabled",
+      );
+    }
+  }
+
+  return {
+    enabled,
+    url,
+    bindHost: getEnvVar("TELEGRAM_MINI_APP_BIND_HOST", false).trim() || "127.0.0.1",
+    port: configuredPort <= 65_535 ? configuredPort : 3101,
+    initDataMaxAgeSec: getOptionalPositiveIntEnvVar(
+      "TELEGRAM_MINI_APP_INIT_DATA_MAX_AGE_SEC",
+      86_400,
+    ),
+    maxDiffBytes: getOptionalPositiveIntEnvVar("TELEGRAM_MINI_APP_MAX_DIFF_BYTES", 1_048_576),
+  };
+}
+
 function getSecretEnvVar(key: string, required: boolean = true): string {
   const fileEnvKey = `${key}_FILE`;
   const configuredFilePath = process.env[fileEnvKey]?.trim();
@@ -374,6 +412,7 @@ export const config = {
   health: {
     port: resolveHealthPort(getEnvVar(BOT_HEALTH_PORT_ENV, false), isContainerRuntime()),
   },
+  miniApp: buildMiniAppConfig(),
   bot: {
     sessionsListLimit: getOptionalPositiveIntEnvVar("SESSIONS_LIST_LIMIT", 10),
     messagesListLimit: getOptionalPositiveIntEnvVar("MESSAGES_LIST_LIMIT", 10),

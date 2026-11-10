@@ -32,6 +32,7 @@ on:
       - package.json
       - package-lock.json
       - src/**
+      - mini-app/**
       - tsconfig.json
       - .github/workflows/container-image.yml
       - .github/workflows/publish.yml

@@ -26,6 +26,7 @@ import {
   formatModelDisplayName,
 } from "./pinned-message-format.js";
 import { getSessionStreamThrottleMs } from "../streaming/stream-throttle.js";
+import { buildMiniAppKeyboard } from "./mini-app-keyboard.js";
 
 type GoalLine = () => string | null;
 
@@ -88,6 +89,7 @@ export class PinnedMessageManager {
   private pendingUpdate = false;
   private pendingForceUpdate = false;
   private lastRenderedMessageText: string | null = null;
+  private lastRenderedKeyboard: string | null = null;
   private leftoverUnpinMessageId: number | null = null;
   private sessionGeneration = 0;
   private preparing: Promise<void> | null = null;
@@ -341,6 +343,7 @@ export class PinnedMessageManager {
     this.state.attachActive = false;
     this.state.attachBusy = false;
     this.lastRenderedMessageText = null;
+    this.lastRenderedKeyboard = null;
     this.pendingUpdate = false;
     this.pendingForceUpdate = false;
   }
@@ -1103,12 +1106,16 @@ export class PinnedMessageManager {
     }
 
     const text = this.formatMessage();
-    const sentMessage = await this.api.sendMessage(this.chatId, text);
+    const keyboard = this.buildMiniAppKeyboard();
+    const sentMessage = keyboard
+      ? await this.api.sendMessage(this.chatId, text, { reply_markup: keyboard })
+      : await this.api.sendMessage(this.chatId, text);
 
     this.state.messageId = sentMessage.message_id;
     this.state.chatId = this.chatId;
     this.state.lastUpdated = Date.now();
     this.lastRenderedMessageText = text;
+    this.lastRenderedKeyboard = this.serializeKeyboard(keyboard);
 
     try {
       await this.api.pinChatMessage(this.chatId, sentMessage.message_id, {
@@ -1164,6 +1171,7 @@ export class PinnedMessageManager {
     this.state.messageId = null;
     this.leftoverUnpinMessageId = null;
     this.lastRenderedMessageText = null;
+    this.lastRenderedKeyboard = null;
     this.pendingUpdate = false;
     this.pendingForceUpdate = false;
     clearPinnedMessageId();
@@ -1223,6 +1231,7 @@ export class PinnedMessageManager {
     this.leftoverUnpinMessageId = messageId;
     this.state.messageId = null;
     this.lastRenderedMessageText = null;
+    this.lastRenderedKeyboard = null;
   }
 
   private isMessageMissingError(err: unknown): boolean {
@@ -1234,6 +1243,14 @@ export class PinnedMessageManager {
       errorMessage.includes("message not found") ||
       errorMessage.includes("not pinned")
     );
+  }
+
+  private buildMiniAppKeyboard() {
+    return buildMiniAppKeyboard(this.state.sessionId, this.state.changedFiles);
+  }
+
+  private serializeKeyboard(keyboard: ReturnType<typeof buildMiniAppKeyboard>): string | null {
+    return keyboard ? JSON.stringify(keyboard.inline_keyboard) : null;
   }
 
   private async createPinnedMessage(): Promise<void> {
@@ -1248,9 +1265,12 @@ export class PinnedMessageManager {
 
     try {
       const text = this.formatMessage();
+      const keyboard = this.buildMiniAppKeyboard();
 
       // Send new message
-      const sentMessage = await this.api.sendMessage(this.chatId, text);
+      const sentMessage = keyboard
+        ? await this.api.sendMessage(this.chatId, text, { reply_markup: keyboard })
+        : await this.api.sendMessage(this.chatId, text);
 
       if (this.state.messageId) {
         // A dashboard from an interrupted flow is still pinned: keep its id tracked so the
@@ -1261,6 +1281,7 @@ export class PinnedMessageManager {
       this.state.chatId = this.chatId;
       this.state.lastUpdated = Date.now();
       this.lastRenderedMessageText = text;
+      this.lastRenderedKeyboard = this.serializeKeyboard(keyboard);
 
       // Save to settings for persistence
       setPinnedMessageId(sentMessage.message_id);
@@ -1323,16 +1344,29 @@ export class PinnedMessageManager {
       }
 
       const text = this.formatMessage();
+      const keyboard = this.buildMiniAppKeyboard();
+      const keyboardState = this.serializeKeyboard(keyboard);
 
-      if (!shouldForceUpdate && text === this.lastRenderedMessageText) {
+      if (
+        !shouldForceUpdate &&
+        text === this.lastRenderedMessageText &&
+        keyboardState === this.lastRenderedKeyboard
+      ) {
         logger.debug("[PinnedManager] Skipping pinned update: message content unchanged");
         continue;
       }
 
       try {
-        await this.api.editMessageText(this.chatId, this.state.messageId, text);
+        if (keyboard) {
+          await this.api.editMessageText(this.chatId, this.state.messageId, text, {
+            reply_markup: keyboard,
+          });
+        } else {
+          await this.api.editMessageText(this.chatId, this.state.messageId, text);
+        }
         this.state.lastUpdated = Date.now();
         this.lastRenderedMessageText = text;
+        this.lastRenderedKeyboard = keyboardState;
 
         logger.debug(`[PinnedManager] Updated pinned message: ${this.state.messageId}`);
 
@@ -1349,6 +1383,7 @@ export class PinnedMessageManager {
         // Handle "message is not modified" error silently
         if (errorMessage.includes("message is not modified")) {
           this.lastRenderedMessageText = text;
+          this.lastRenderedKeyboard = keyboardState;
           continue;
         }
 
@@ -1468,6 +1503,7 @@ export class PinnedMessageManager {
     this.state.tokensLimit = 0;
     this.state.changedFiles = [];
     this.lastRenderedMessageText = null;
+    this.lastRenderedKeyboard = null;
     this.pendingUpdate = false;
     this.pendingForceUpdate = false;
   }

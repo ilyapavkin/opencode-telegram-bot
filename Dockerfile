@@ -19,6 +19,7 @@ RUN npm ci
 # Copy TypeScript config and source code
 COPY tsconfig.json ./
 COPY src/ ./src/
+COPY mini-app/ ./mini-app/
 
 # Build the project
 RUN npm run build
