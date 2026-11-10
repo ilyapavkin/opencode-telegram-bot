@@ -20,14 +20,19 @@ function makeInitData(overrides: Record<string, string> = {}): string {
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([key, value]) => `${key}=${value}`)
     .join("\n");
-  const secretKey = createHmac("sha256", BOT_TOKEN).update("WebAppData").digest();
+  const secretKey = createHmac("sha256", "WebAppData").update(BOT_TOKEN).digest();
   const hash = createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
   return new URLSearchParams({ ...values, hash }).toString();
 }
 
 describe("mini-app auth", () => {
   it("accepts valid Telegram Web App initData", () => {
-    expect(validateMiniAppInitData(makeInitData(), BOT_TOKEN, ALLOWED_USER_ID, 3600, NOW)).toEqual({
+    const initData = makeInitData();
+
+    expect(new URLSearchParams(initData).get("hash")).toBe(
+      "e37fa3a808977d793c78f2e7cdd5a1c0282ee033b66db4f247e7cc9b8c342d2e",
+    );
+    expect(validateMiniAppInitData(initData, BOT_TOKEN, ALLOWED_USER_ID, 3600, NOW)).toEqual({
       userId: ALLOWED_USER_ID,
     });
   });
