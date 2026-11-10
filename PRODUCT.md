@@ -222,6 +222,7 @@ Agent picker behavior:
 - [x] Telegram-friendly result delivery, including sending generated code/files when needed
 - [x] Interactive question and permission handling directly in chat (buttons + custom answers)
 - [x] Live pinned session status in chat (project, model with variant in parentheses when set, context usage, changed files from OpenCode's session diff rather than a sum of each edit), with an opt-out in `/settings` that defaults to on. On OpenCode V2, when the session has a goal, a line after the title shows its status and a short objective; no goal means no line
+- [x] Authenticated Telegram Mini App diff viewer launched from the pinned dashboard, with V1/V2 session diff normalization and unified/side-by-side read-only views
 - [x] In-chat controls for model, agent, variant, and context
 - [x] Built-in and custom command catalog access (`/commands`)
 - [x] Trusted local JSON commands from the persistent application home, executed without OpenCode or model tokens

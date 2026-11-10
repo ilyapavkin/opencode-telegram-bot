@@ -503,6 +503,8 @@ export const ru: I18nDictionary = {
   "pinned.files.title": "Файлы ({count}):",
   "pinned.files.item": "  {path}{diff}",
   "pinned.files.more": "  ... и еще {count}",
+  "pinned.files.open": "🔍 {path}",
+  "pinned.files.open_all": "🔍 Открыть все диффы",
 
   "tool.todo.overflow": "*(ещё {count} задач)*",
   "tool.file_header.write":

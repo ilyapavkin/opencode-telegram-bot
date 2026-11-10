@@ -23,6 +23,7 @@ import { TaskCreationManager } from "../managers/scheduled-task-creation-manager
 import { SummaryAggregator } from "../managers/summary-aggregation-manager.js";
 import { GoalService } from "../services/goal-service.js";
 import { HealthServer } from "../services/health-server-service.js";
+import { MiniAppServer } from "../services/mini-app-server-service.js";
 import { formatDashboardGoalLine } from "../formatters/goal-text.js";
 import { ScheduledTaskRuntime } from "../services/scheduled-task-runtime-service.js";
 import { GatewayClient } from "../../gateway/client.js";
@@ -49,6 +50,7 @@ export interface AppContainer {
   readonly gatewayClient: GatewayClient;
   readonly gatewayMonitor: GatewayMonitor;
   readonly healthServer: HealthServer;
+  readonly miniAppServer: MiniAppServer;
   readonly interactionManager: InteractionManager;
   readonly keyboardManager: KeyboardManager;
   readonly opencodeAutoRestartService: OpencodeAutoRestartService;
@@ -133,6 +135,7 @@ export function createAppContainer(): AppContainer {
     gatewayClient,
     gatewayMonitor,
     healthServer: new HealthServer(),
+    miniAppServer: new MiniAppServer(),
     interactionManager,
     keyboardManager: new KeyboardManager(goalManager),
     opencodeAutoRestartService: new OpencodeAutoRestartService(opencodeReadyLifecycle),

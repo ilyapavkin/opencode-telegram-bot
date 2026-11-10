@@ -10,6 +10,8 @@ const mocked = vi.hoisted(() => ({
   autoRestartStopMock: vi.fn(),
   healthServerStartMock: vi.fn(),
   healthServerStopMock: vi.fn(),
+  miniAppServerStartMock: vi.fn(),
+  miniAppServerStopMock: vi.fn(),
   notifyOpencodeReadyIfHealthyMock: vi.fn(),
   registerOpenCodeReadyRefreshHandlerMock: vi.fn(),
   loadSettingsMock: vi.fn(),
@@ -49,6 +51,10 @@ const container = vi.hoisted(() => ({
   healthServer: {
     start: mocked.healthServerStartMock,
     stop: mocked.healthServerStopMock,
+  },
+  miniAppServer: {
+    start: mocked.miniAppServerStartMock,
+    stop: mocked.miniAppServerStopMock,
   },
   opencodeAutoRestartService: {
     start: mocked.autoRestartStartMock,
@@ -201,6 +207,8 @@ describe("app/start-bot-app", () => {
     mocked.autoRestartStopMock.mockReset();
     mocked.healthServerStartMock.mockReset();
     mocked.healthServerStopMock.mockReset();
+    mocked.miniAppServerStartMock.mockReset();
+    mocked.miniAppServerStopMock.mockReset();
     mocked.notifyOpencodeReadyIfHealthyMock.mockReset();
     mocked.registerOpenCodeReadyRefreshHandlerMock.mockReset();
     mocked.loadSettingsMock.mockReset();
@@ -225,6 +233,8 @@ describe("app/start-bot-app", () => {
     mocked.autoRestartStartMock.mockResolvedValue(false);
     mocked.healthServerStartMock.mockResolvedValue(undefined);
     mocked.healthServerStopMock.mockResolvedValue(undefined);
+    mocked.miniAppServerStartMock.mockResolvedValue(undefined);
+    mocked.miniAppServerStopMock.mockResolvedValue(undefined);
     mocked.notifyOpencodeReadyIfHealthyMock.mockResolvedValue(false);
     mocked.loadSettingsMock.mockResolvedValue(undefined);
     mocked.flushSettingsMock.mockResolvedValue(undefined);
@@ -306,12 +316,20 @@ describe("app/start-bot-app", () => {
     expect(defined(mocked.healthServerStartMock.mock.invocationCallOrder[0])).toBeLessThan(
       defined(mocked.createBotMock.mock.invocationCallOrder[0]),
     );
+    expect(mocked.miniAppServerStartMock).toHaveBeenCalledTimes(1);
+    expect(defined(mocked.miniAppServerStartMock.mock.invocationCallOrder[0])).toBeGreaterThan(
+      defined(mocked.healthServerStartMock.mock.invocationCallOrder[0]),
+    );
+    expect(defined(mocked.miniAppServerStartMock.mock.invocationCallOrder[0])).toBeLessThan(
+      defined(mocked.createBotMock.mock.invocationCallOrder[0]),
+    );
   });
 
   it("stops the health server on normal exit", async () => {
     await startBotApp();
 
     expect(mocked.healthServerStopMock).toHaveBeenCalledTimes(1);
+    expect(mocked.miniAppServerStopMock).toHaveBeenCalledTimes(1);
   });
 
   it("logs an unhandled rejection and keeps the process alive", async () => {
@@ -425,6 +443,7 @@ describe("app/start-bot-app", () => {
     expect(mocked.autoRestartStopMock).toHaveBeenCalledTimes(1);
     expect(mocked.scheduledTaskShutdownMock).toHaveBeenCalledTimes(1);
     expect(mocked.healthServerStopMock).toHaveBeenCalledTimes(1);
+    expect(mocked.miniAppServerStopMock).toHaveBeenCalledTimes(1);
     expect(bot.stop).toHaveBeenCalledTimes(1);
 
     releaseStart();

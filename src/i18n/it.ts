@@ -501,6 +501,8 @@ export const it: I18nDictionary = {
   "pinned.files.title": "File ({count}):",
   "pinned.files.item": "  {path}{diff}",
   "pinned.files.more": "  ... e altri {count}",
+  "pinned.files.open": "🔍 {path}",
+  "pinned.files.open_all": "🔍 Apri tutti i diff",
 
   "tool.todo.overflow": "*({count} attività in più)*",
   "tool.file_header.write":
