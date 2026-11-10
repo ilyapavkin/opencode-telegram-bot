@@ -80,4 +80,34 @@ describe("pinned Mini App keyboard", () => {
       },
     });
   });
+
+  it("can restrict an exact keyboard to the document being sent", () => {
+    getCurrentProject.mockReturnValue({ worktree: "/repo" });
+
+    const keyboard = buildMiniAppChangeKeyboard(
+      {
+        sessionId: "ses-1",
+        messageId: "msg-1",
+        callId: "call-1",
+        tool: "edit",
+        input: {},
+        state: {
+          status: "completed",
+          input: {},
+          output: "",
+          title: "",
+          metadata: {},
+          time: { start: 0, end: 0 },
+        },
+        metadata: { filediff: { file: "/repo/src/one.ts" } },
+      },
+      ["/repo/src/two.ts"],
+    );
+
+    const rows = keyboard?.inline_keyboard.filter((row) => row.length > 0) ?? [];
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.[0]).toMatchObject({
+      web_app: { url: expect.stringContaining("file=src%2Ftwo.ts") },
+    });
+  });
 });

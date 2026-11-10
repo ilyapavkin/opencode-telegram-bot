@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { InlineKeyboard } from "grammy";
 import { ToolCallStreamer } from "../../../src/bot/streaming/tool-call-streamer.js";
 import { defined } from "../../helpers/defined.js";
 
@@ -123,12 +124,7 @@ describe("bot/streaming/tool-call-streamer", () => {
       expect(sendText).toHaveBeenCalledTimes(3);
     });
 
-    streamer.replaceByPrefix(
-      "s1",
-      "subagent",
-      "first subagent card updated",
-      "subagent:card-1",
-    );
+    streamer.replaceByPrefix("s1", "subagent", "first subagent card updated", "subagent:card-1");
     await vi.waitFor(() => {
       expect(editText).toHaveBeenCalledTimes(1);
     });
@@ -228,6 +224,48 @@ describe("bot/streaming/tool-call-streamer", () => {
     }
   });
 
+  it("keeps exact-change keyboards on their own continuation messages", async () => {
+    vi.useFakeTimers();
+
+    let nextMessageId = 100;
+    const sendText = vi.fn(async () => nextMessageId++);
+    const editText = vi.fn().mockResolvedValue(undefined);
+    const deleteText = vi.fn().mockResolvedValue(undefined);
+    const streamer = new ToolCallStreamer({
+      throttleMs: 0,
+      sendText,
+      editText,
+      deleteText,
+    });
+    const keyboardOne = new InlineKeyboard().text("one", "one");
+    const keyboardTwo = new InlineKeyboard().text("two", "two");
+    const keyboardThree = new InlineKeyboard().text("three", "three");
+
+    streamer.replaceByPrefix("s1", "one", "a".repeat(3000), "default", keyboardOne);
+    await vi.waitFor(() => expect(sendText).toHaveBeenCalledTimes(1));
+    streamer.replaceByPrefix("s1", "two", "b".repeat(3000), "default", keyboardTwo);
+    await vi.waitFor(() => expect(sendText).toHaveBeenCalledTimes(2));
+    streamer.replaceByPrefix("s1", "three", "c".repeat(3000), "default", keyboardThree);
+    await vi.waitFor(() => expect(sendText).toHaveBeenCalledTimes(3));
+
+    const sentKeyboards = sendText.mock.calls.map(
+      (call) => (call as unknown as [string, string, InlineKeyboard])[2],
+    );
+    expect(sentKeyboards.map((keyboard) => keyboard.inline_keyboard)).toEqual([
+      keyboardOne.inline_keyboard.filter((row) => row.length > 0),
+      keyboardTwo.inline_keyboard.filter((row) => row.length > 0),
+      keyboardThree.inline_keyboard.filter((row) => row.length > 0),
+    ]);
+    const editedKeyboards = editText.mock.calls.map(
+      (call) => (call as unknown as [string, number, string, InlineKeyboard])[3],
+    );
+    expect(editedKeyboards.map((keyboard) => keyboard.inline_keyboard)).toEqual([
+      keyboardOne.inline_keyboard.filter((row) => row.length > 0),
+      keyboardOne.inline_keyboard.filter((row) => row.length > 0),
+      keyboardTwo.inline_keyboard.filter((row) => row.length > 0),
+    ]);
+  });
+
   it("replaces retry text by prefix inside the active stream", async () => {
     vi.useFakeTimers();
 
@@ -308,9 +346,13 @@ describe("bot/streaming/tool-call-streamer", () => {
     await vi.waitFor(() => expect(editText).toHaveBeenCalled());
 
     streamer.replaceByPrefix("s1", "⏳two", "second finished");
-    await vi.waitFor(() => expect(editText).toHaveBeenLastCalledWith("s1", 1, "⏳ first\n\nsecond finished"));
+    await vi.waitFor(() =>
+      expect(editText).toHaveBeenLastCalledWith("s1", 1, "⏳ first\n\nsecond finished"),
+    );
     streamer.replaceByPrefix("s1", "⏳one", "first finished");
-    await vi.waitFor(() => expect(editText).toHaveBeenLastCalledWith("s1", 1, "first finished\n\nsecond finished"));
+    await vi.waitFor(() =>
+      expect(editText).toHaveBeenLastCalledWith("s1", 1, "first finished\n\nsecond finished"),
+    );
     expect(sendText).toHaveBeenCalledTimes(1);
   });
 
@@ -427,8 +469,11 @@ describe("bot/streaming/tool-call-streamer", () => {
     let resolveEdit: (() => void) | undefined;
     let id = 1;
     const sendText = vi.fn(async () => id++);
-    const editText = vi.fn((_sessionId: string, _messageId: number, _text: string) =>
-      new Promise<void>((resolve) => { resolveEdit = resolve; }),
+    const editText = vi.fn(
+      (_sessionId: string, _messageId: number, _text: string) =>
+        new Promise<void>((resolve) => {
+          resolveEdit = resolve;
+        }),
     );
     const streamer = new ToolCallStreamer({
       throttleMs: 0,
@@ -448,7 +493,9 @@ describe("bot/streaming/tool-call-streamer", () => {
     streamer.replaceByPrefix("s1", "⏳todo", "todo finished", "todo");
     resolveEdit?.();
     await breaking;
-    expect(editText.mock.calls.some((call) => String(call[2]).includes("todo finished"))).toBe(false);
+    expect(editText.mock.calls.some((call) => String(call[2]).includes("todo finished"))).toBe(
+      false,
+    );
     expect(sendText).toHaveBeenCalledTimes(2);
   });
 

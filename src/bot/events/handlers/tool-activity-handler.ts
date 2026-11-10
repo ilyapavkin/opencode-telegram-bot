@@ -528,7 +528,7 @@ export function registerToolActivityHandlers(deps: ToolActivityDeps): void {
       await runtime.toolCallStreamer.flushSession(fileInfo.sessionId, "tool_file_boundary");
 
       const toolMessage = formatToolInfo(fileInfo);
-      for (const { fileData, line } of fileInfo.files) {
+      for (const { fileData, line, fileChange } of fileInfo.files) {
         if (!fileData) {
           continue;
         }
@@ -538,7 +538,7 @@ export function registerToolActivityHandlers(deps: ToolActivityDeps): void {
             ...fileData,
             caption: prepareDocumentCaption(line || toolMessage || fileData.caption),
           },
-          buildMiniAppChangeKeyboard(fileInfo),
+          buildMiniAppChangeKeyboard(fileInfo, fileChange ? [fileChange.file] : []),
         );
       }
       await runtime.toolMessageBatcher.flushSession(fileInfo.sessionId, "tool_file_boundary");

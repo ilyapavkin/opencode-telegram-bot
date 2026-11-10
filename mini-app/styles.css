@@ -293,6 +293,8 @@ button:disabled {
 
 .diff-line,
 .split-row {
+  width: max-content;
+  min-width: 100%;
   min-height: 22px;
 }
 

@@ -38,27 +38,31 @@ export function buildMiniAppUrl(sessionId: string, file?: string): string {
   return buildMiniAppUrlWithChange(sessionId, file);
 }
 
-export function buildMiniAppChangeKeyboard(toolInfo: ToolInfo): InlineKeyboard | undefined {
+export function buildMiniAppChangeKeyboard(
+  toolInfo: ToolInfo,
+  requestedFiles?: readonly string[],
+): InlineKeyboard | undefined {
   if (!config.miniApp.enabled || !config.miniApp.url) {
     return undefined;
   }
 
-  const files = getToolFilePaths(toolInfo);
+  const files = requestedFiles ?? getToolFilePaths(toolInfo);
+  const selectors = files
+    .slice(0, MAX_DISPLAYED_FILES)
+    .map(toFileSelector)
+    .filter((selector): selector is string => selector !== null);
   const keyboard = new InlineKeyboard();
-  for (const file of files.slice(0, MAX_DISPLAYED_FILES)) {
-    const selector = toFileSelector(file);
-    if (!selector) {
-      continue;
-    }
-
+  for (const [index, selector] of selectors.entries()) {
     keyboard.webApp(
       t("pinned.files.open", { path: shortenLabel(selector) }),
       buildMiniAppUrlWithChange(toolInfo.sessionId, selector, toolInfo.messageId, toolInfo.callId),
     );
-    keyboard.row();
+    if (index < selectors.length - 1) {
+      keyboard.row();
+    }
   }
 
-  return keyboard.inline_keyboard.length > 0 ? keyboard : undefined;
+  return keyboard.inline_keyboard.some((row) => row.length > 0) ? keyboard : undefined;
 }
 
 function buildMiniAppUrlWithChange(

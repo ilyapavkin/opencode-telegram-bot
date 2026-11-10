@@ -30,13 +30,18 @@ interface StreamEntry {
   keyboard?: InlineKeyboard | undefined;
 }
 
+interface StreamPart {
+  text: string;
+  keyboard?: InlineKeyboard | undefined;
+}
+
 interface StreamState {
   key: ToolStreamKey;
   sessionId: string;
   entries: StreamEntry[];
-  latestParts: string[];
+  latestParts: StreamPart[];
   lastSentParts: string[];
-  lastSentKeyboard: string | null;
+  lastSentKeyboards: Array<string | null>;
   telegramMessageIds: number[];
   timer: ReturnType<typeof setTimeout> | null;
   task: Promise<boolean>;
@@ -114,27 +119,70 @@ function splitLongText(text: string, limit: number): string[] {
   return chunks;
 }
 
-function buildParts(entries: StreamEntry[]): string[] {
-  const text = entries
-    .map((entry) => entry.text.trim())
-    .filter(Boolean)
-    .join("\n\n");
-  if (!text) {
-    return [];
-  }
-
-  return splitLongText(text, TELEGRAM_MESSAGE_SAFE_LENGTH).filter(Boolean);
-}
-
-function buildKeyboard(entries: StreamEntry[]): InlineKeyboard | undefined {
-  const rows = entries.flatMap((entry) => entry.keyboard?.inline_keyboard ?? []);
+function mergeKeyboards(keyboards: Array<InlineKeyboard | undefined>): InlineKeyboard | undefined {
+  const rows = keyboards
+    .flatMap((keyboard) => keyboard?.inline_keyboard ?? [])
+    .filter((row) => row.length > 0);
   if (rows.length === 0) {
     return undefined;
   }
 
   const keyboard = new InlineKeyboard();
+  keyboard.inline_keyboard.length = 0;
   keyboard.inline_keyboard.push(...rows);
   return keyboard;
+}
+
+function buildParts(entries: StreamEntry[]): StreamPart[] {
+  const parts: StreamPart[] = [];
+  let currentText = "";
+  let currentKeyboards: Array<InlineKeyboard | undefined> = [];
+
+  const flush = (): void => {
+    if (!currentText) {
+      return;
+    }
+
+    parts.push({
+      text: currentText,
+      keyboard: mergeKeyboards(currentKeyboards),
+    });
+    currentText = "";
+    currentKeyboards = [];
+  };
+
+  for (const entry of entries) {
+    const text = entry.text.trim();
+    if (!text) {
+      continue;
+    }
+
+    const candidate = currentText ? `${currentText}\n\n${text}` : text;
+    if (currentText && candidate.length > TELEGRAM_MESSAGE_SAFE_LENGTH) {
+      flush();
+    }
+
+    if (text.length > TELEGRAM_MESSAGE_SAFE_LENGTH) {
+      const chunks = splitLongText(text, TELEGRAM_MESSAGE_SAFE_LENGTH);
+      for (const chunk of chunks.slice(0, -1)) {
+        parts.push({ text: chunk });
+      }
+
+      currentText = chunks.at(-1) ?? "";
+      currentKeyboards = [entry.keyboard];
+      continue;
+    }
+
+    currentText = currentText ? `${currentText}\n\n${text}` : text;
+    currentKeyboards.push(entry.keyboard);
+  }
+
+  flush();
+  return parts;
+}
+
+function keyboardSignature(keyboard: InlineKeyboard | undefined): string | null {
+  return keyboard ? JSON.stringify(keyboard.inline_keyboard) : null;
 }
 
 export class ToolCallStreamer {
@@ -499,7 +547,7 @@ export class ToolCallStreamer {
       entries: [],
       latestParts: [],
       lastSentParts: [],
-      lastSentKeyboard: null,
+      lastSentKeyboards: [],
       telegramMessageIds: [],
       timer: null,
       task: Promise.resolve(true),
@@ -584,12 +632,13 @@ export class ToolCallStreamer {
 
     while (!state.isBroken && !state.cancelled) {
       const parts = state.latestParts;
-      const keyboard = buildKeyboard(state.entries);
-      const keyboardSignature = keyboard ? JSON.stringify(keyboard.inline_keyboard) : null;
       const unchanged =
         parts.length === state.lastSentParts.length &&
-        parts.every((part, index) => state.lastSentParts[index] === part) &&
-        state.lastSentKeyboard === keyboardSignature;
+        parts.every(
+          (part, index) =>
+            state.lastSentParts[index] === part.text &&
+            state.lastSentKeyboards[index] === keyboardSignature(part.keyboard),
+        );
 
       if (unchanged) {
         return state.telegramMessageIds.length > 0;
@@ -600,9 +649,8 @@ export class ToolCallStreamer {
       }
 
       try {
-        await this.syncMessages(state, parts, keyboard);
+        await this.syncMessages(state, parts);
         state.deleteWhenEmpty = false;
-        state.lastSentKeyboard = keyboardSignature;
         if (state.cancelled) {
           return false;
         }
@@ -719,29 +767,33 @@ export class ToolCallStreamer {
     });
   }
 
-  private async syncMessages(
-    state: StreamState,
-    parts: string[],
-    keyboard?: InlineKeyboard,
-  ): Promise<void> {
+  private async syncMessages(state: StreamState, parts: StreamPart[]): Promise<void> {
     for (let index = 0; index < parts.length; index++) {
       if (state.cancelled) {
         return;
       }
 
-      const text = parts[index];
-      if (text === undefined) {
+      const part = parts[index];
+      if (part === undefined) {
         continue;
       }
+      const { text, keyboard } = part;
       const currentMessageId = state.telegramMessageIds[index];
+      const previousKeyboard = state.lastSentKeyboards[index];
+      const keyboardToEdit =
+        keyboard ??
+        (previousKeyboard !== null && previousKeyboard !== undefined
+          ? new InlineKeyboard()
+          : undefined);
 
       if (currentMessageId) {
         await this.enqueueTelegramOperation(state.sessionId, () =>
-          keyboard
-            ? this.editText(state.sessionId, currentMessageId, text, keyboard)
+          keyboardToEdit
+            ? this.editText(state.sessionId, currentMessageId, text, keyboardToEdit)
             : this.editText(state.sessionId, currentMessageId, text),
         );
         state.lastSentParts[index] = text;
+        state.lastSentKeyboards[index] = keyboardSignature(keyboard);
         continue;
       }
 
@@ -760,6 +812,7 @@ export class ToolCallStreamer {
       );
       state.telegramMessageIds[index] = messageId;
       state.lastSentParts[index] = text;
+      state.lastSentKeyboards[index] = keyboardSignature(keyboard);
     }
 
     for (let index = state.telegramMessageIds.length - 1; index >= parts.length; index--) {
@@ -775,6 +828,7 @@ export class ToolCallStreamer {
       }
       state.telegramMessageIds.pop();
       state.lastSentParts.pop();
+      state.lastSentKeyboards.pop();
     }
   }
 }

@@ -411,9 +411,7 @@ describe("summary/aggregator", () => {
       sendAssistantMessage({ variant: "high" });
       sendAssistantMessage({});
 
-      expect(onSubagent.mock.lastCall?.[1]).toEqual([
-        expect.objectContaining({ variant: "high" }),
-      ]);
+      expect(onSubagent.mock.lastCall?.[1]).toEqual([expect.objectContaining({ variant: "high" })]);
     });
 
     it("does not store an empty variant", () => {
@@ -875,7 +873,10 @@ describe("summary/aggregator", () => {
 
         emitError("child-session-1", { name: "UnknownError", data: { message: "boom" } });
 
-        expect(lastCards(onSubagent)[0]).toMatchObject({ status: "error", terminalMessage: "boom" });
+        expect(lastCards(onSubagent)[0]).toMatchObject({
+          status: "error",
+          terminalMessage: "boom",
+        });
       });
 
       it("ends running cards, a nested subagent getting none, when the parent run is interrupted", () => {
@@ -972,7 +973,10 @@ describe("summary/aggregator", () => {
         summaryAggregator.interruptSubagents();
         emitError("child-session-1", { name: "UnknownError", data: { message: "boom" } });
 
-        expect(lastCards(onSubagent)[0]).toMatchObject({ status: "error", terminalMessage: "boom" });
+        expect(lastCards(onSubagent)[0]).toMatchObject({
+          status: "error",
+          terminalMessage: "boom",
+        });
       });
 
       it("ends a background card interrupted once OpenCode reports its subagent interrupted", () => {
@@ -1081,7 +1085,12 @@ describe("summary/aggregator", () => {
         summaryAggregator.processEvent({
           type: "message.part.updated",
           properties: {
-            part: { id: `${sessionID}-${String(part.type)}`, sessionID, messageID: `${sessionID}-m`, ...part },
+            part: {
+              id: `${sessionID}-${String(part.type)}`,
+              sessionID,
+              messageID: `${sessionID}-m`,
+              ...part,
+            },
           },
         } as unknown as Event);
       }
@@ -1268,7 +1277,9 @@ describe("summary/aggregator", () => {
 
         at(1_000, () => emitLaunch("launch-1", "running"));
         at(2_000, () => emitLaunch("launch-2", "running"));
-        at(3_000, () => emitLaunch("launch-1", "running", { prompt: "Count", description: "Again" }));
+        at(3_000, () =>
+          emitLaunch("launch-1", "running", { prompt: "Count", description: "Again" }),
+        );
         expect(lastCard(onSubagent)).toMatchObject({
           currentToolCallId: "launch-2",
           currentToolStartedAt: 2_000,
@@ -1526,9 +1537,9 @@ describe("summary/aggregator", () => {
 
       expect(onSubagent.mock.calls.length).toBeGreaterThan(callsAfterFirst);
       expect(onSubagent.mock.lastCall?.[1][0].currentToolCallId).toBe("call-2");
-      expect(
-        onSubagent.mock.lastCall?.[1][0].currentToolStartedAt as number,
-      ).toBeGreaterThan(firstStartedAt);
+      expect(onSubagent.mock.lastCall?.[1][0].currentToolStartedAt as number).toBeGreaterThan(
+        firstStartedAt,
+      );
     });
   });
 
@@ -2368,10 +2379,7 @@ describe("summary/aggregator", () => {
     await new Promise<void>((resolve) => setImmediate(resolve));
 
     expect(onThinkingFinished).toHaveBeenCalledTimes(1);
-    expect(onThinkingFinished).toHaveBeenCalledWith(
-      "session-1",
-      "message-thinking-finished",
-    );
+    expect(onThinkingFinished).toHaveBeenCalledWith("session-1", "message-thinking-finished");
   });
 
   it("does not signal thinking finished for assistant text without reasoning", async () => {
@@ -3445,7 +3453,11 @@ describe("summary/aggregator", () => {
       files: Array<{ fileData: { filename: string } | null; line?: string }>;
     };
     expect(filePayload.files).toEqual([
-      { fileData: null, line: "🩹 apply_patch src/huge.ts (+1)" },
+      {
+        fileData: null,
+        line: "🩹 apply_patch src/huge.ts (+1)",
+        fileChange: { file: "src/huge.ts", additions: 1, deletions: 0 },
+      },
       expect.objectContaining({
         fileData: expect.objectContaining({ filename: "edit_small.ts.txt" }),
         line: "🩹 apply_patch src/small.ts (+1)",

@@ -98,6 +98,8 @@ export interface ToolFileEntry {
   fileData: CodeFileData | null;
   /** The file's own line, for a call that lists each file it changed. */
   line?: string;
+  /** The exact file change represented by this attachment, when available. */
+  fileChange?: FileChange | null;
 }
 
 export interface ToolFileInfo extends ToolInfo {
@@ -2314,9 +2316,10 @@ export class SummaryAggregator {
                 .join(", ")}`,
             );
             const callback = this.onToolFileCallback;
-            const files = preparedFiles.map(({ fileData, line }): ToolFileEntry => ({
+            const files = preparedFiles.map(({ fileData, line, fileChange }): ToolFileEntry => ({
               fileData,
               ...(line !== undefined ? { line } : {}),
+              fileChange,
             }));
             this.scheduleOutbound(
               () =>
