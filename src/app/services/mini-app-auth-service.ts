@@ -44,6 +44,7 @@ export function validateMiniAppInitData(
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([key, value]) => `${key}=${value}`)
     .join("\n");
+  // Telegram uses WebAppData as the HMAC key and the bot token as the message.
   const secretKey = createHmac("sha256", "WebAppData").update(botToken).digest();
   const expectedHash = createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
 

@@ -1,7 +1,6 @@
 # OpenCode Telegram Bot
 
 [![npm version](https://img.shields.io/npm/v/@grinev/opencode-telegram-bot)](https://www.npmjs.com/package/@grinev/opencode-telegram-bot)
-[![CI](https://github.com/grinev/opencode-telegram-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/grinev/opencode-telegram-bot/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D22.14-brightgreen)](https://nodejs.org)
 [![Follow updates](https://img.shields.io/badge/-Follow%20updates-333333?logo=x)](https://x.com/grin_rus)
@@ -509,13 +508,13 @@ cp .env.example .env
 
 #### Published container images
 
-Official container images are published to GitHub Container Registry at `ghcr.io/grinev/opencode-telegram-bot` for `linux/amd64` and `linux/arm64`. Download the latest stable image with:
+Production container images are built and published by Drone CI to the registry configured for the deployment. Use the image reference provided by your deployment, or build the image locally:
 
 ```bash
-docker pull ghcr.io/grinev/opencode-telegram-bot:latest
+docker compose build
 ```
 
-To use a specific published release, replace `latest` with its version number (without the `v` prefix). Release candidates use their exact version tag, such as `0.27.0-rc.1`, and do not update `latest`. The Docker Compose commands below build the image locally instead of using the published image.
+GitHub Actions are not used for CI, image publishing, npm publication, or GitHub release creation. Those operations are handled by Drone CI or performed manually, depending on the deployment.
 
 **Linux** (OpenCode on the host at `127.0.0.1:4096`):
 
