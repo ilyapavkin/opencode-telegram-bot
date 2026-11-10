@@ -120,7 +120,7 @@ steps:
         - push
     settings:
       context: gateway
-      dockerfile: Dockerfile
+      dockerfile: gateway/Dockerfile
       registry:
         from_secret: registry_host
       repo:
