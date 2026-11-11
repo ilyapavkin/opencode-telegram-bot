@@ -106,7 +106,13 @@ export function buildMiniAppConfig(): {
   if (enabled) {
     try {
       const parsed = new URL(url);
-      if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.search || parsed.hash) {
+      if (
+        parsed.protocol !== "https:" ||
+        parsed.username ||
+        parsed.password ||
+        parsed.search ||
+        parsed.hash
+      ) {
         throw new Error();
       }
     } catch {
@@ -126,6 +132,69 @@ export function buildMiniAppConfig(): {
       86_400,
     ),
     maxDiffBytes: getOptionalPositiveIntEnvVar("TELEGRAM_MINI_APP_MAX_DIFF_BYTES", 1_048_576),
+  };
+}
+
+function normalizeConfiguredUrl(value: string, name: string, requiredProtocol: string): string {
+  const normalized = value.trim().replace(/\/+$/, "");
+  if (!normalized) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(normalized);
+    if (
+      parsed.protocol !== requiredProtocol ||
+      parsed.username ||
+      parsed.password ||
+      parsed.search ||
+      parsed.hash
+    ) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error(
+      `${name} must be a valid ${requiredProtocol.slice(0, -1).toUpperCase()} URL without credentials, query, or hash`,
+    );
+  }
+
+  return normalized;
+}
+
+export function buildSshConfig(): {
+  enabled: boolean;
+  miniAppUrl: string;
+  helperUrl: string;
+  signingPrivateKeyFile: string;
+  unlockRequestTtlSec: number;
+  maxAttempts: number;
+} {
+  const miniAppUrl = normalizeConfiguredUrl(
+    getEnvVar("TELEGRAM_SSH_MINI_APP_URL", false),
+    "TELEGRAM_SSH_MINI_APP_URL",
+    "https:",
+  );
+  const helperUrl = normalizeConfiguredUrl(
+    getEnvVar("SSH_HELPER_URL", false),
+    "SSH_HELPER_URL",
+    "https:",
+  );
+  const signingPrivateKeyFile = getEnvVar("SSH_HELPER_SIGNING_PRIVATE_KEY_FILE", false).trim();
+  const enabled = Boolean(miniAppUrl || helperUrl || signingPrivateKeyFile);
+
+  if (enabled && (!miniAppUrl || !helperUrl || !signingPrivateKeyFile)) {
+    throw new Error(
+      "SSH key unlock requires TELEGRAM_SSH_MINI_APP_URL, SSH_HELPER_URL, and SSH_HELPER_SIGNING_PRIVATE_KEY_FILE",
+    );
+  }
+
+  return {
+    enabled,
+    miniAppUrl,
+    helperUrl,
+    signingPrivateKeyFile,
+    unlockRequestTtlSec: getOptionalPositiveIntEnvVar("SSH_UNLOCK_REQUEST_TTL_SEC", 300),
+    maxAttempts: getOptionalPositiveIntEnvVar("SSH_UNLOCK_MAX_ATTEMPTS", 5),
   };
 }
 
@@ -298,14 +367,10 @@ export function parseInitialSettingsPreset(): Record<string, unknown> {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new Error(
-      "INITIAL_SETTINGS_PRESET contains invalid JSON. Fix or unset the variable.",
-    );
+    throw new Error("INITIAL_SETTINGS_PRESET contains invalid JSON. Fix or unset the variable.");
   }
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    throw new Error(
-      "INITIAL_SETTINGS_PRESET must be a JSON object.",
-    );
+    throw new Error("INITIAL_SETTINGS_PRESET must be a JSON object.");
   }
   return parsed as Record<string, unknown>;
 }
@@ -413,6 +478,7 @@ export const config = {
     port: resolveHealthPort(getEnvVar(BOT_HEALTH_PORT_ENV, false), isContainerRuntime()),
   },
   miniApp: buildMiniAppConfig(),
+  ssh: buildSshConfig(),
   bot: {
     sessionsListLimit: getOptionalPositiveIntEnvVar("SESSIONS_LIST_LIMIT", 10),
     messagesListLimit: getOptionalPositiveIntEnvVar("MESSAGES_LIST_LIMIT", 10),
@@ -468,8 +534,7 @@ export const config = {
           : provider === "edge"
             ? "en-US-EmmaMultilingualNeural"
             : "alloy";
-    const defaultModel =
-      provider === "elevenlabs" ? "eleven_flash_v2_5" : "gpt-4o-mini-tts";
+    const defaultModel = provider === "elevenlabs" ? "eleven_flash_v2_5" : "gpt-4o-mini-tts";
     return {
       apiUrl: getEnvVar("TTS_API_URL", false),
       apiKey: getEnvVar("TTS_API_KEY", false),

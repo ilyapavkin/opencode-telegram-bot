@@ -479,6 +479,7 @@ export const ar: I18nDictionary = {
   "pinned.files.more": "  ... و{count} أخرى",
   "pinned.files.open": "🔍 {path}",
   "pinned.files.open_all": "🔍 فتح كل الفروقات",
+  "pinned.ssh.open": "🔐 مفتاح SSH",
 
   "tool.todo.overflow": "*({count} مهام أخرى)*",
   "tool.file_header.write":

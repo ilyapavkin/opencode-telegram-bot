@@ -506,6 +506,7 @@ export const es: I18nDictionary = {
   "pinned.files.more": "  ... y {count} más",
   "pinned.files.open": "🔍 {path}",
   "pinned.files.open_all": "🔍 Abrir todos los diffs",
+  "pinned.ssh.open": "🔐 Clave SSH",
 
   "tool.todo.overflow": "*({count} tareas más)*",
   "tool.file_header.write":

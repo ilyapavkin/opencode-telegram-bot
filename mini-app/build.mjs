@@ -10,6 +10,7 @@ const outputAssets = path.join(outputRoot, "assets");
 await fs.rm(outputRoot, { recursive: true, force: true });
 await fs.mkdir(outputAssets, { recursive: true });
 await fs.copyFile(path.join(directory, "index.html"), path.join(outputRoot, "index.html"));
+await fs.copyFile(path.join(directory, "ssh.html"), path.join(outputRoot, "ssh.html"));
 await fs.copyFile(path.join(directory, "styles.css"), path.join(outputAssets, "styles.css"));
 
 for (const entry of await fs.readdir(sourceDist, { withFileTypes: true })) {

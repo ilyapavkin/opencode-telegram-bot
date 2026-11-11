@@ -23,15 +23,18 @@
   "scripts": {
     "build": "tsc && npm run build:mini-app",
     "build:mini-app": "tsc -p mini-app/tsconfig.json && node mini-app/build.mjs",
+    "build:ssh-helper": "npm --prefix ssh-helper run build",
     "start": "node dist/index.js",
     "dev": "npm run build && npm start",
     "release:prepare": "node scripts/release-prepare.mjs",
     "release:rc": "node scripts/release-prepare.mjs rc",
     "release:notes:preview": "node scripts/release-notes-preview.mjs",
-    "lint": "eslint src tests mini-app/src tests/mini-app --max-warnings=0",
-    "typecheck": "tsc -p tsconfig.test.json --noEmit && tsc -p mini-app/tsconfig.json --noEmit",
+    "lint": "eslint src tests mini-app/src tests/mini-app ssh-helper/src ssh-helper/tests --max-warnings=0",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit && tsc -p mini-app/tsconfig.json --noEmit && npm run typecheck:ssh-helper",
+    "typecheck:ssh-helper": "tsc -p ssh-helper/tsconfig.json --noEmit",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "test": "vitest run",
+    "test": "vitest run && npm run test:ssh-helper",
+    "test:ssh-helper": "npm --prefix ssh-helper test",
     "test:coverage": "vitest run --coverage"
   },
   "repository": {

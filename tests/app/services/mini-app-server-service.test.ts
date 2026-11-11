@@ -22,6 +22,14 @@ vi.mock("../../../src/config.js", () => ({
       initDataMaxAgeSec: 3600,
       maxDiffBytes: 100,
     },
+    ssh: {
+      enabled: true,
+      miniAppUrl: "https://example.test/mini-app/ssh",
+      helperUrl: "https://helper.test",
+      signingPrivateKeyFile: "/tmp/signing-key",
+      unlockRequestTtlSec: 300,
+      maxAttempts: 5,
+    },
     telegram: { token: "token", allowedUserId: 123 },
   },
 }));
@@ -125,9 +133,63 @@ describe("mini-app server", () => {
     expect(mocked.loadDiff).not.toHaveBeenCalled();
   });
 
+  it("serves the SSH Mini App and protects SSH API routes with Telegram auth", async () => {
+    await fs.writeFile(path.join(staticRoot, "ssh.html"), "<html>ssh app</html>");
+    const service = {
+      publicKey: vi.fn().mockResolvedValue({ keyId: "key-1", publicKey: "public-key" }),
+      status: vi.fn().mockResolvedValue({ state: "locked", keyId: "key-1", fingerprint: null }),
+      authorize: vi.fn().mockResolvedValue({
+        requestId: "request-1",
+        authorizationToken: "token-1",
+        keyId: "key-1",
+        publicKey: "public-key",
+        expiresAt: 1_700_000_100,
+      }),
+      unlock: vi.fn(),
+      lock: vi.fn(),
+    };
+    await server.stop();
+    server = new MiniAppServer(staticRoot, service as never);
+    await server.start();
+
+    await expect(fetchAt("/mini-app/ssh/")).resolves.toMatchObject({
+      status: 200,
+      body: "<html>ssh app</html>",
+    });
+    await expect(fetchAt("/mini-app/api/ssh/status")).resolves.toMatchObject({ status: 401 });
+
+    const response = await fetchAt("/mini-app/api/ssh/status", {
+      "X-Telegram-Init-Data": "auth-date=data",
+    });
+    expect(response.status).toBe(200);
+    expect(service.status).toHaveBeenCalledOnce();
+
+    service.unlock.mockResolvedValue({
+      state: "unlocked",
+      keyId: "key-1",
+      fingerprint: "SHA256:test",
+    });
+    const unlock = await fetchAt(
+      "/mini-app/api/ssh/unlock",
+      { "X-Telegram-Init-Data": "auth-date=data" },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId: "request-1",
+          authorizationToken: "token-1",
+          envelope: { version: 1, keyId: "key-1" },
+        }),
+      },
+    );
+    expect(unlock.status).toBe(200);
+    expect(service.unlock).toHaveBeenCalledOnce();
+  });
+
   async function fetchAt(
     requestPath: string,
     headers: Record<string, string> = {},
+    init: RequestInit = {},
   ): Promise<{ status: number; body: string }> {
     const internal = server as unknown as { server: http.Server | null };
     const address = internal.server?.address();
@@ -135,7 +197,10 @@ describe("mini-app server", () => {
       throw new Error("Mini App server has no TCP address");
     }
 
-    const response = await fetch(`http://127.0.0.1:${address.port}${requestPath}`, { headers });
+    const response = await fetch(`http://127.0.0.1:${address.port}${requestPath}`, {
+      ...init,
+      headers: { ...init.headers, ...headers },
+    });
     return { status: response.status, body: await response.text() };
   }
 });
